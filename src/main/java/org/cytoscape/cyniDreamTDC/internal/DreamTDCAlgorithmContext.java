@@ -2,11 +2,13 @@ package org.cytoscape.cyniDreamTDC.internal;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 
 import org.cytoscape.cyni.CyniAlgorithmContext;
 import org.cytoscape.model.CyTable;
+import org.cytoscape.work.TunableValidator.ValidationState;
 import org.cytoscape.work.util.*;
+import org.apache.commons.lang3.StringUtils;
 
 import org.cytoscape.work.Tunable;
 import org.cytoscape.work.TunableValidator;
@@ -24,25 +26,81 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},xorKey="Don't use prior data")
 	public boolean noDatabase = true ;
 	
+	public ListSingleSelection<String> dataFormat = new ListSingleSelection<String>(THREE_DIMENSIONS_FORMAT,TWO_DIMENSIONS_FORMAT);
+	@Tunable(description="Data Columns Name Format", groups="Sources for Network Inference")
+	public ListSingleSelection<String> getDataFormat()
+	{
+		return dataFormat;
+	}
 	
+	public void setDataFormat(ListSingleSelection<String> format)
+	{
+		dataFormat = format;
+		if(dataFormat.getSelectedValue().matches(TWO_DIMENSIONS_FORMAT))
+			attributes = cols2dFormat;
+		if(dataFormat.getSelectedValue().matches(THREE_DIMENSIONS_FORMAT))
+			attributes = cols3dFormat;
+		if(attributes.size() > 0)
+		{
+			attributeList.setPossibleValues(attributes);
+			attributeList.setSelectedValues(attributeList.getPossibleValues());
+		}
+		else
+		{
+			attributeList = new  ListMultipleSelection<String>("No sources available");
+		}
+	}
+	
+	@Tunable(description="Data Attributes", groups="Sources for Network Inference",listenForChange = "DataFormat")
+	public ListMultipleSelection<String> attributeList;
+	
+	private List<String> attributesHugo;
 	private List<String> attributes;
+	private List<String> cols2dFormat;
+	private List<String> cols3dFormat;
 	public static String MODE_DATABASE = "Use Pathway Commons database prior data";
 	public static String MODE_OWN_DATA = "Use your own set of prior network data";
 	public static String MODE_NO_PRIOR_DATA = "Don't use prior data";
+	public static String TWO_DIMENSIONS_FORMAT = "Dimension1/Dimension2";
+	public static String THREE_DIMENSIONS_FORMAT = "Dimension1/Dimension2/Dimension3";
 
 	public DreamTDCAlgorithmContext(CyTable table ) {
 		super(true);
-		attributes = getAllAttributesStrings(table);
+		attributesHugo = getAllAttributesStrings(table);
 		if(getAllAttributesLists(table).size() > 0)
-			attributes.addAll(getAllAttributesLists(table));
-		if(attributes.size() > 0)
+			attributesHugo.addAll(getAllAttributesLists(table));
+		if(attributesHugo.size() > 0)
 		{
-			hugoColumn = new ListSingleSelection<String>(attributes);
+			hugoColumn = new ListSingleSelection<String>(attributesHugo);
 			
 		}
 		else
 		{
 			hugoColumn = new  ListSingleSelection<String>("No sources available");
+		}
+		attributes = getAllAttributesNumbers(table);
+		cols2dFormat =  new ArrayList<String>();
+		cols3dFormat =  new ArrayList<String>();
+		for(String col : attributes)
+		{
+			int num = StringUtils.countMatches(col, "/");
+			if(num == 1)
+				cols2dFormat.add(col);
+			if(num == 2)
+				cols3dFormat.add(col);
+		}
+		if(dataFormat.getSelectedValue().matches(TWO_DIMENSIONS_FORMAT))
+			attributes = cols2dFormat;
+		if(dataFormat.getSelectedValue().matches(THREE_DIMENSIONS_FORMAT))
+			attributes = cols3dFormat;
+		if(attributes.size() > 0)
+		{
+			attributeList = new  ListMultipleSelection<String>(attributes);
+			attributeList.setSelectedValues(attributeList.getPossibleValues());
+		}
+		else
+		{
+			attributeList = new  ListMultipleSelection<String>("No sources available");
 		}
 		mode.setSelectedValue(MODE_DATABASE);
 		
@@ -70,6 +128,17 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 				return ValidationState.INVALID;
 			}
 			return ValidationState.INVALID;
+		}
+		
+		if(attributeList.getPossibleValues().get(0).matches("No sources available") || attributeList.getSelectedValues().size() == 0) {
+			try {
+				errMsg.append("No sources selected to apply the algorithm or there are no available. Please, select sources from the list if available.");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return ValidationState.INVALID;
+			}
+			return ValidationState.INVALID;
+			
 		}
 		
 		return ValidationState.OK;

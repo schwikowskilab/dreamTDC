@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
 
 import javax.swing.JOptionPane;
 
@@ -93,7 +94,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		
 		this.mytable = selectedTable;
 		this.hugoColumn = context.hugoColumn.getSelectedValue();
-		this.attributeArray = null;
+		this.attributeArray = context.attributeList.getSelectedValues();
 		this.layoutManager = layoutManager;
 		this.netUtils = new CyniNetworkUtils(networkViewFactory,networkManager,networkViewManager,netTableMgr,rootNetMgr,vmMgr);
 		
@@ -112,23 +113,48 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		Double progress = 0.0d;
 		CyNetwork networkSelected = null;
 		String networkName;
+		CyRow row;
 		CyLayoutAlgorithm layout;
 		CyNetworkView newNetworkView ;
-		Map<String,Integer> columnIdsMap = new HashMap<String,Integer> ();
+		Map<Integer,List<String>> indexHugoIdsMap = new HashMap<Integer,List<String>> ();
 		
 		String queryTest = "ACACA ACACB AKT1 AKT1S1 AKT2 AKT3 BAD CDKN1B CHEK1 CHEK2 EGFR EIF4EBP1 ERBB2 ERBB3 ESR1 FOXO3 GSK3A GSK3B JUN MAP2K1 MAPK1 MAPK14 MAPK3 MAPK8 MET MTOR NDRG1 PDK1 PEA15 PRKAA1 PRKAA2 PRKCA PRKCB PRKCD PRKCE PRKCH PRKCQ RAF1 RB1 RELA RICTOR RPS6 RPS6KA1 RPS6KB1 SRC STAT3 WWTR1 YAP1 YBX1";
 		String str[]= queryTest.split(" ");
 		List<String> patternList = Arrays.asList(str);
 		List<String> priorFiles;
+		Set<String> hugoIds = new HashSet<String>();
+		
+		// Create the CyniTable
+	    CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
 		
 		DreamFileUtils fileUtils = new DreamFileUtils(filesPath);
 		
+		for(int i=0;i < data.nRows();i++)
+		{
+			row = mytable.getRow(data.getRowLabel(i));
+			if(nodeWithMultipleIds)
+			{
+				List<String> tempList = row.getList(hugoColumn,String.class);
+				indexHugoIdsMap.put(i, tempList);
+				for(String id : tempList)
+					hugoIds.add(id);
+			}
+			else
+			{
+				String hugo = row.get(hugoColumn, String.class);
+				indexHugoIdsMap.put(i, new ArrayList<String>());
+				indexHugoIdsMap.get(i).add(hugo);
+				hugoIds.add(hugo);
+			}
+		}
+			
+		//patternList.addAll( hugoIds);
 		priorFiles = fileUtils.getFilesWithPatterns(patternList);
 		
 		System.out.println("number of files found: " + priorFiles.size());
 		
 		DreamPrior prior = new DreamPrior(fileUtils);
-		prior.getPriorResults(priorFiles,patternList);
+		prior.getPriorResults(priorFiles,patternList,indexHugoIdsMap);
         //step = 1.0 /  attributeArray.size();
         
         taskMonitor.setStatusMessage("Algorithm running ...");
@@ -141,8 +167,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		//Check if a network is associated to the selected table
 		networkSelected = netUtils.getNetworkAssociatedToTable(mytable);
 		
-		// Create the CyniTable
-		//CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
+		
 		
 		
 		//Set the name of the network, another name could be chosen

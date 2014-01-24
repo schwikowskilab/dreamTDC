@@ -56,7 +56,7 @@ public class DreamPrior {
 		this.fileUtils = fileUtils;
 	}
 	
-	public void getPriorResults(List<String> listFiles,List<String> listStringIds ) 
+	public double[][] getPriorResults(List<String> listFiles,List<String> listStringIds, Map<Integer,List<String>> indexHugoIds ) 
 	{
 		String textFile;
 		File file;
@@ -65,10 +65,12 @@ public class DreamPrior {
 		Map<String,Integer> degrees = new HashMap<String,Integer>();
 		String nodesIds[];
 		ArrayList<Integer> listIds = new ArrayList<Integer>();
-		SparseDoubleMatrix2D data , prior;
+		SparseDoubleMatrix2D data , prior, finalData;
 		DoubleMatrix tempData ;
+		double sum;
 		
 		prior = new SparseDoubleMatrix2D(listStringIds.size(),listStringIds.size());
+		finalData = new SparseDoubleMatrix2D(indexHugoIds.size(),indexHugoIds.size());
 		
 		for(String fileName : listFiles)
 		{
@@ -128,7 +130,35 @@ public class DreamPrior {
 			tempData.divi(prior.getMaxLocation()[0]);
 			prior.assign(tempData.toArray2());
 		}
+		
+		for(int i= 0;i< indexHugoIds.size();i++)
+		{
+			for(int j= 0;j< indexHugoIds.size();j++)
+			{
+				sum = 0.0;
+				if(indexHugoIds.get(i).size() == 0 || indexHugoIds.get(i).size() ==0)
+					continue;
+				for(String hugoId1 : indexHugoIds.get(i))
+				{
+					for(String hugoId2 : indexHugoIds.get(j))
+					{
+						sum += prior.getQuick(listStringIds.indexOf(hugoId1), listStringIds.indexOf(hugoId2));
+					}
+					
+				}
+				sum = sum / (indexHugoIds.get(i).size()*indexHugoIds.get(j).size());
+				finalData.setQuick(i, j, sum);
+			}
+		}
 			
+		if(finalData.getMaxLocation()[0] != 0)
+		{
+			tempData = new DoubleMatrix(finalData.toArray());
+			tempData.divi(finalData.getMaxLocation()[0]);
+			finalData.assign(tempData.toArray2());
+		}
+		
+		return finalData.toArray();
 	}
 	
 	private void parseNetwork(Set<String> nodes, Map<String,Map<String,Integer>> edges,Map<String,Integer> degree, String network )
