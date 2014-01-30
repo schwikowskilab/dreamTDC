@@ -37,6 +37,7 @@ import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 import org.apache.commons.io.IOUtils;
 import cern.colt.matrix.tdouble.impl.*;
+import org.cytoscape.cyni.*;
 
 
 
@@ -48,22 +49,24 @@ public class DreamPrior {
 	
 	
 	private DreamFileUtils fileUtils;
+	private boolean cancelled;
 	/**
 	 * Creates a new EqualDiscretization object.
 	 */
 	public DreamPrior(DreamFileUtils fileUtils) {
 		
 		this.fileUtils = fileUtils;
+		cancelled = false;
 	}
 	
-	public double[][] getPriorResults(List<String> listFiles,List<String> listStringIds, Map<Integer,List<String>> indexHugoIds ) 
+	public double[][] getPriorResults(List<String> listFiles,List<String> listStringIds, Map<Integer,List<String>> indexHugoIds , CyniTable table) 
 	{
 		String textFile;
 		File file;
 		Set<String> nodes = new HashSet<String>();
 		Map<String,Map<String,Integer>> edges = new HashMap<String,Map<String,Integer>>();
 		Map<String,Integer> degrees = new HashMap<String,Integer>();
-		String nodesIds[];
+		String nodesIds[] ;
 		ArrayList<Integer> listIds = new ArrayList<Integer>();
 		SparseDoubleMatrix2D data , prior, finalData;
 		DoubleMatrix tempData ;
@@ -111,14 +114,28 @@ public class DreamPrior {
 			tempData = new DoubleMatrix(data.toArray());
 			tempData.muli(-0.1);
 			data.assign(MatrixFunctions.expm(tempData).toArray2());
-			//writeData(file,data,nodesIds);
+			writeData(file,data,nodesIds);
 			if(listIds.size() >0)
 			{
+				sum = 0.0;
 				for(Integer id1 : listIds)
 				{
 					for(Integer id2 : listIds)
 					{
-						prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), data.getQuick(id1, id2));
+						if(id1 != id2)
+							sum += data.getQuick(id1, id2);
+					}
+				}
+				if(sum == 0.0)
+					continue;
+				for(Integer id1 : listIds)
+				{
+					for(Integer id2 : listIds)
+					{
+						if(id1 == id2)
+							prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), 0);
+						else
+							prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), data.getQuick(id1, id2));
 					}
 				}
 			}
@@ -136,7 +153,7 @@ public class DreamPrior {
 			for(int j= 0;j< indexHugoIds.size();j++)
 			{
 				sum = 0.0;
-				if(indexHugoIds.get(i).size() == 0 || indexHugoIds.get(i).size() ==0)
+				if(indexHugoIds.get(i).size() == 0 || indexHugoIds.get(j).size() ==0)
 					continue;
 				for(String hugoId1 : indexHugoIds.get(i))
 				{
@@ -158,6 +175,11 @@ public class DreamPrior {
 			finalData.assign(tempData.toArray2());
 		}
 		
+		nodesIds = new String[400];
+		for(int i =0;i<table.nRows();i++)
+			nodesIds[i] = (String)table.getRowLabel(i);
+		file = new File("/home/oguitart/temp/priorData.txt");
+		writeData(file,finalData,nodesIds);
 		return finalData.toArray();
 	}
 	
@@ -200,7 +222,7 @@ public class DreamPrior {
 	
 	private void writeData(File file,SparseDoubleMatrix2D data, String[] ids)
 	{
-		File newFile = new File(file.getPath()+ ".pid");
+		File newFile = new File(file.getPath()+ ".data");
 		FileWriter fw;
 		String line = "";
 		
@@ -237,5 +259,9 @@ public class DreamPrior {
     	}
 	}
 	
+	public void setCancel()
+	{
+		cancelled = true;
+	}
 	
 }

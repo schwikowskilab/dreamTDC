@@ -14,20 +14,23 @@ import org.cytoscape.work.Tunable;
 import org.cytoscape.work.TunableValidator;
 
 public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements TunableValidator {
-	@Tunable(description="P Mode:",groups="Algorithm Prior Data Definition", xorChildren=true)
+	@Tunable(description="Prior Data Mode:",groups="Algorithm Prior Data Definition", xorChildren=true, gravity=1.0)
 	public ListSingleSelection<String> mode = new ListSingleSelection<String>(MODE_DATABASE,MODE_OWN_DATA,MODE_NO_PRIOR_DATA);
 	
-	@Tunable(description="Select column containing HUGO Ids:",groups={"Algorithm Prior Data Definition","HUGO ID Definition"},xorKey="Use Pathway Commons database prior data")
+	@Tunable(description="Select column containing HUGO Ids:",groups={"Algorithm Prior Data Definition","HUGO ID Definition"},gravity=2.0,xorKey="Use Pathway Commons database prior data")
 	public ListSingleSelection<String> hugoColumn ;
 	
-	@Tunable(description="Zip File containing all networks:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},params="input=true",xorKey="Use your own set of prior network data")
+	@Tunable(description="Zip File containing all networks:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")
 	public File networkZipFile ;
 	
-	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},xorKey="Don't use prior data")
+	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},gravity=4.0,xorKey="Don't use prior data")
 	public boolean noDatabase = true ;
 	
+	@Tunable(description="Data Attributes", groups="Sources for Network Inference",gravity=5.0,listenForChange = "DataFormat")
+	public ListMultipleSelection<String> attributeList;
+	
 	public ListSingleSelection<String> dataFormat = new ListSingleSelection<String>(THREE_DIMENSIONS_FORMAT,TWO_DIMENSIONS_FORMAT);
-	@Tunable(description="Data Columns Name Format", groups="Sources for Network Inference")
+	@Tunable(description="Data Columns Name Format", groups="Sources for Network Inference",gravity=6.0)
 	public ListSingleSelection<String> getDataFormat()
 	{
 		return dataFormat;
@@ -51,8 +54,10 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 		}
 	}
 	
-	@Tunable(description="Data Attributes", groups="Sources for Network Inference",listenForChange = "DataFormat")
-	public ListMultipleSelection<String> attributeList;
+	@Tunable(description="Network generation option", groups="Sources for Network Inference",gravity=7.0, dependsOn="DataFormat=Dimension1/Dimension2/Dimension3")
+	public ListSingleSelection<String> outputOptions = new ListSingleSelection<String>(COMBINE_ALL,ONLY_ONE_NETWORK);
+	
+	
 	
 	private List<String> attributesHugo;
 	private List<String> attributes;
@@ -63,6 +68,8 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	public static String MODE_NO_PRIOR_DATA = "Don't use prior data";
 	public static String TWO_DIMENSIONS_FORMAT = "Dimension1/Dimension2";
 	public static String THREE_DIMENSIONS_FORMAT = "Dimension1/Dimension2/Dimension3";
+	public static String COMBINE_ALL = "Generate network for each Dimension1 found";
+	public static String ONLY_ONE_NETWORK = "Generate just one network";
 
 	public DreamTDCAlgorithmContext(CyTable table ) {
 		super(true);

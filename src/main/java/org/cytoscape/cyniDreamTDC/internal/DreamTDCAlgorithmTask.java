@@ -43,10 +43,12 @@ import java.util.HashSet;
 import javax.swing.JOptionPane;
 
 import org.cytoscape.model.CyColumn;
+import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNetworkFactory;
 import org.cytoscape.model.CyNetworkManager;
 import org.cytoscape.model.CyNetworkTableManager;
+import org.cytoscape.model.CyNode;
 import org.cytoscape.model.CyRow;
 import org.cytoscape.cyni.*;
 import org.cytoscape.view.layout.CyLayoutAlgorithm;
@@ -74,7 +76,12 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	private CyLayoutAlgorithmManager layoutManager;
 	private CyniNetworkUtils netUtils;
 	private String hugoColumn;
+	private String mode;
+	private File file;
 	private boolean nodeWithMultipleIds;
+	private boolean threeDformat;
+	private DreamPrior prior;
+	private DreamGranger dreamGranger;
 	
 	public static final String DEFAULT_CONFIG_DIR = CyProperty.DEFAULT_PROPS_CONFIG_DIR ;
 	
@@ -93,6 +100,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		super(name, context,networkFactory,networkViewFactory,networkManager, networkViewManager,netTableMgr,rootNetMgr, vmMgr);
 		
 		this.mytable = selectedTable;
+		this.mode = context.mode.getSelectedValue();
 		this.hugoColumn = context.hugoColumn.getSelectedValue();
 		this.attributeArray = context.attributeList.getSelectedValues();
 		this.layoutManager = layoutManager;
@@ -102,6 +110,13 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			nodeWithMultipleIds = true;
 		else
 			nodeWithMultipleIds = false;
+		if(context.dataFormat.getSelectedValue().matches(DreamTDCAlgorithmContext.THREE_DIMENSIONS_FORMAT))
+			threeDformat = true;
+		else
+			threeDformat = false;
+		
+		if(mode == DreamTDCAlgorithmContext.MODE_OWN_DATA)
+			file = context.networkZipFile;
 	}
 
 	/**
@@ -116,21 +131,107 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		CyRow row;
 		CyLayoutAlgorithm layout;
 		CyNetworkView newNetworkView ;
+		CyTable  edgeTable;
+		double priorData[][] = null;
+		double grangerData[][] = null;
 		Map<Integer,List<String>> indexHugoIdsMap = new HashMap<Integer,List<String>> ();
+		Map<String,List<String>> twoDimensionsMap ;
+		Map<String,List<String>> threeDimensionsMap = null ;
+		Map<String,List<String>> mapDim1ToDim2 = new HashMap<String,List<String>> ();
+		Map<String,double[][]> mapGrangertables = new HashMap<String,double[][]> ();
+		Set<String> dimensions2 = new HashSet();
+		Set<String> dimensions3 = new HashSet();
+		ArrayList<String> dimension2List = new ArrayList<String>();
+		ArrayList<String> dimension3List = new ArrayList<String>();
+		DreamFileUtils fileUtils = null;
 		
-		String queryTest = "ACACA ACACB AKT1 AKT1S1 AKT2 AKT3 BAD CDKN1B CHEK1 CHEK2 EGFR EIF4EBP1 ERBB2 ERBB3 ESR1 FOXO3 GSK3A GSK3B JUN MAP2K1 MAPK1 MAPK14 MAPK3 MAPK8 MET MTOR NDRG1 PDK1 PEA15 PRKAA1 PRKAA2 PRKCA PRKCB PRKCD PRKCE PRKCH PRKCQ RAF1 RB1 RELA RICTOR RPS6 RPS6KA1 RPS6KB1 SRC STAT3 WWTR1 YAP1 YBX1";
-		String str[]= queryTest.split(" ");
-		List<String> patternList = Arrays.asList(str);
+		//String queryTest = "ACACA ACACB AKT1 AKT1S1 AKT2 AKT3 BAD CDKN1B CHEK1 CHEK2 EGFR EIF4EBP1 ERBB2 ERBB3 ESR1 FOXO3 GSK3A GSK3B JUN MAP2K1 MAPK1 MAPK14 MAPK3 MAPK8 MET MTOR NDRG1 PDK1 PEA15 PRKAA1 PRKAA2 PRKCA PRKCB PRKCD PRKCE PRKCH PRKCQ RAF1 RB1 RELA RICTOR RPS6 RPS6KA1 RPS6KB1 SRC STAT3 WWTR1 YAP1 YBX1";
+		//String str[]= queryTest.split(" ");
+		List<String> patternList =new ArrayList<String>();
 		List<String> priorFiles;
 		Set<String> hugoIds = new HashSet<String>();
+		
+		taskMonitor.setTitle("Dream DC_TDC Algorithm");
+		//patternList = Arrays.asList(str);
+		
+		if(threeDformat)
+		{
+			threeDimensionsMap = new HashMap<String,List<String>> ();
+			String array[];
+			for(String dimension : attributeArray)
+			{
+				
+				array = dimension.split("/");
+				if(array.length != 3)
+					continue;
+				if(mapDim1ToDim2.get(array[0]) == null)
+				{
+					mapDim1ToDim2.put(array[0], new ArrayList<String>());
+					mapDim1ToDim2.get(array[0]).add(array[1]);
+				}
+				else
+				{
+					if(!mapDim1ToDim2.get(array[0]).contains(array[1]))
+						mapDim1ToDim2.get(array[0]).add(array[1]);
+				}
+				dimensions3.add(array[2]);
+				if(!dimension3List.contains(array[2]))
+					dimension3List.add(array[2]);
+				
+				if(threeDimensionsMap.get(array[0]) == null)
+				{
+					ArrayList<String> listCols = new ArrayList<String>();
+					listCols.add(dimension);
+					threeDimensionsMap.put(array[0], listCols);
+				}
+				else
+					threeDimensionsMap.get(array[0]).add(dimension);
+				
+			}
+			System.out.println("times: " + dimension3List);
+			//dimension2List.addAll(dimensions2);
+			//dimension3List.addAll(dimensions3);
+		}
+		else
+		{			
+			twoDimensionsMap = new HashMap<String,List<String>> ();
+			String array[];
+			for(String dimension : attributeArray)
+			{
+				array = dimension.split("/");
+				if(array.length != 2)
+					continue;
+				dimensions2.add(array[0]);
+				dimensions3.add(array[1]);
+				if(twoDimensionsMap.get(array[0]) == null)
+				{
+					ArrayList<String> listCols = new ArrayList<String>();
+					listCols.add(dimension);
+					twoDimensionsMap.put(array[0], listCols);
+				}
+				else
+					twoDimensionsMap.get(array[0]).add(dimension);				
+			}
+			dimension2List.addAll(dimensions2);
+			dimension3List.addAll(dimensions3);
+		}
 		
 		// Create the CyniTable
 	    CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
 		
-		DreamFileUtils fileUtils = new DreamFileUtils(filesPath);
+	    if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
+	    		fileUtils = new DreamFileUtils(filesPath);
+	    if(mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA) && file.exists())
+	    		fileUtils = new DreamFileUtils(file.getPath());
+		
+	    dreamGranger = new DreamGranger(data, nThreads);
+		
+		priorData = new double[data.nRows()][data.nRows()];
 		
 		for(int i=0;i < data.nRows();i++)
 		{
+			if (cancelled)
+				break;
 			row = mytable.getRow(data.getRowLabel(i));
 			if(nodeWithMultipleIds)
 			{
@@ -148,51 +249,112 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			}
 		}
 			
-		//patternList.addAll( hugoIds);
-		priorFiles = fileUtils.getFilesWithPatterns(patternList);
+		if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE) || mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA))
+		{
+			patternList.addAll( hugoIds);
+			if(fileUtils != null)
+			{
+
+				priorFiles = fileUtils.getFilesWithPatterns(patternList);
+				
+				System.out.println("number of files found: " + priorFiles.size());
+				
+				taskMonitor.setStatusMessage("Calculating Prior Data ...");
+				taskMonitor.setProgress(0.1);
+				prior = new DreamPrior(fileUtils);
+				priorData = prior.getPriorResults(priorFiles,patternList,indexHugoIdsMap, data);
+			}
+		}
 		
-		System.out.println("number of files found: " + priorFiles.size());
-		
-		DreamPrior prior = new DreamPrior(fileUtils);
-		prior.getPriorResults(priorFiles,patternList,indexHugoIdsMap);
-        //step = 1.0 /  attributeArray.size();
-        
-        taskMonitor.setStatusMessage("Algorithm running ...");
-		taskMonitor.setProgress(progress);
-		
-		//Create new network
-		CyNetwork newNetwork = netFactory.createNetwork();
-		
+		if(threeDformat)
+		{
+			double temp [][];
+			for(String nameDimension : mapDim1ToDim2.keySet())
+			{
+				taskMonitor.setStatusMessage("Calculating Regression for " + nameDimension);
+				taskMonitor.setProgress(0.4);
+				if (cancelled)
+					break;
+				List<String> dim3List = getDimension3List(data,nameDimension, mapDim1ToDim2.get(nameDimension),dimension3List);
+				temp = dreamGranger.getGrangerResults(nameDimension, mapDim1ToDim2.get(nameDimension), dim3List);
+				if(temp != null)
+					mapGrangertables.put(nameDimension, temp);
+			}
+			
+		}
+		else
+		{
+			taskMonitor.setStatusMessage("Calculating Regression on provided data ...");
+			taskMonitor.setProgress(0.4);
+			grangerData = dreamGranger.getGrangerResults(null, dimension2List, dimension3List);
+		}
 		
 		//Check if a network is associated to the selected table
 		networkSelected = netUtils.getNetworkAssociatedToTable(mytable);
 		
 		
-		
-		
-		//Set the name of the network, another name could be chosen
-		networkName = "Cyni Dream DC_TDC " + newNetwork.getSUID();
-		if (newNetwork != null && networkName != null) {
-			CyRow netRow = newNetwork.getRow(newNetwork);
-			netRow.set(CyNetwork.NAME, networkName);
-		}
-		
-		
-		/*****************************************************/
-		//
-		// Add the different nodes and edges according to the table data
-	    //
-		//
-		/*****************************************************/
-		
-		//Display the new network
-		if (!cancelled)
+		if(threeDformat)
 		{
-			newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,false);
-			taskMonitor.setProgress(1.0d);
-			layout = layoutManager.getDefaultLayout();
-			Object context = layout.getDefaultLayoutContext();
-			insertTasksAfterCurrentTask(layout.createTaskIterator(newNetworkView, context, CyLayoutAlgorithm.ALL_NODE_VIEWS,""));
+			taskMonitor.setStatusMessage("Generating networks ...");
+			taskMonitor.setProgress(0.7);
+			
+			for(String names : mapGrangertables.keySet())
+			{
+				//Create new network
+				CyNetwork newNetwork = netFactory.createNetwork();
+		
+				
+				//Set the name of the network, another name could be chosen
+				networkName = "Cyni Dream DC_TDC " + names + " "+ newNetwork.getSUID();
+				if (newNetwork != null && networkName != null) {
+					CyRow netRow = newNetwork.getRow(newNetwork);
+					netRow.set(CyNetwork.NAME, networkName);
+				}
+				edgeTable = newNetwork.getDefaultEdgeTable();
+				netUtils.addColumns(networkSelected,newNetwork,mytable,CyNode.class, CyNetwork.LOCAL_ATTRS);
+				
+				fillNetwork(newNetwork,priorData,mapGrangertables.get(names), data, threeDimensionsMap.get(names));
+				
+				//Display the new network
+				if (!cancelled)
+				{
+					newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,false);
+					layout = layoutManager.getDefaultLayout();
+					Object context = layout.getDefaultLayoutContext();
+					insertTasksAfterCurrentTask(layout.createTaskIterator(newNetworkView, context, CyLayoutAlgorithm.ALL_NODE_VIEWS,""));
+				}
+			}
+		}
+		else
+		{
+			taskMonitor.setStatusMessage("Generating network ...");
+			taskMonitor.setProgress(0.7);
+			//Create new network
+			CyNetwork newNetwork = netFactory.createNetwork();
+	
+			
+			//Set the name of the network, another name could be chosen
+			networkName = "Cyni Dream DC_TDC " + newNetwork.getSUID();
+			if (newNetwork != null && networkName != null) {
+				CyRow netRow = newNetwork.getRow(newNetwork);
+				netRow.set(CyNetwork.NAME, networkName);
+			}
+			
+			edgeTable = newNetwork.getDefaultEdgeTable();
+			netUtils.addColumns(networkSelected,newNetwork,mytable,CyNode.class, CyNetwork.LOCAL_ATTRS);
+			
+			fillNetwork(newNetwork,priorData,grangerData, data, null);
+			
+			//Display the new network
+			if (!cancelled)
+			{
+				newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,false);
+				taskMonitor.setProgress(1.0d);
+				layout = layoutManager.getDefaultLayout();
+				Object context = layout.getDefaultLayoutContext();
+				insertTasksAfterCurrentTask(layout.createTaskIterator(newNetworkView, context, CyLayoutAlgorithm.ALL_NODE_VIEWS,""));
+			}
+			
 		}
 		
 		taskMonitor.setProgress(1.0d);
@@ -212,5 +374,124 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		return builder.toString();
 	}
 	
+	private List<String> getDimension3List(CyniTable table, String dimension1, List<String> dimensions2, List<String> dimensions3)
+	{
+		ArrayList<String> finalList = new ArrayList<String>();
+		ArrayList<String> removeList = new ArrayList<String>();
+		String colName;
+		
+		finalList.addAll(dimensions3);
+		
+		for(String dim3 : dimensions3)
+		{
+			for(String dim2 : dimensions2)
+			{
+				if(dimension1 != null)
+					colName = dimension1 + "/";
+				else
+					colName="";
+				colName +=  dim2 + "/" + dim3;
+				if(table.getColIndex(colName) == -1)
+				{
+					removeList.add(dim3);
+					break;
+				}
+			}
+		}
+		
+		finalList.removeAll(removeList);
+		
+		return finalList;
+	}
 	
+	private void fillNetwork(CyNetwork network, double[][] table1, double[][] table2, CyniTable data, List<String> colsToKeep)
+	{
+		CyNode mapRowNodes[];
+		CyNode node1, node2;
+		CyEdge edge;
+		int numNodes = 0;
+		int nRows = data.nRows();
+		CyNetwork networkSelected = netUtils.getNetworkAssociatedToTable(mytable);
+		
+		mapRowNodes = new CyNode[nRows];
+		
+		for (int i = 0; i < nRows; i++) 
+		{
+			if (cancelled)
+				break;
+
+			for (int j = i+1; j < nRows; j++) 
+			{
+				if (cancelled)
+					break;
+				if(((table1[i][j] + table2[i][j])/2.0) > 0)
+				{
+		
+					if(mapRowNodes[i] == null)
+					{
+						node1 = network.addNode();
+						netUtils.cloneRow(network,CyNode.class,mytable.getRow(data.getRowLabel(i)), network.getRow(node1));
+						if(network.getRow(node1).get(CyNetwork.NAME,String.class ) == null || network.getRow(node1).get(CyNetwork.NAME,String.class ).isEmpty() == true)
+						{
+							if(mytable.getPrimaryKey().getType().equals(String.class) && networkSelected == null)
+								network.getRow(node1).set(CyNetwork.NAME,mytable.getRow(data.getRowLabel(i)).get(mytable.getPrimaryKey().getName(),String.class));
+							else
+								network.getRow(node1).set(CyNetwork.NAME, "Node " + numNodes);
+						}
+						if(network.getRow(node1).get(CyNetwork.SELECTED,Boolean.class ) == true)
+							network.getRow(node1).set(CyNetwork.SELECTED, false);
+						mapRowNodes[i] =node1;
+						numNodes++;
+					}
+					if(mapRowNodes[j] == null)
+					{
+						node2 = network.addNode();
+						netUtils.cloneRow(network,CyNode.class,mytable.getRow(data.getRowLabel(j)), network.getRow(node2));
+						if(network.getRow(node2).get(CyNetwork.NAME,String.class ) == null || network.getRow(node2).get(CyNetwork.NAME,String.class ).isEmpty() == true)
+						{
+							if(mytable.getPrimaryKey().getType().equals(String.class) && networkSelected == null)
+								network.getRow(node2).set(CyNetwork.NAME,mytable.getRow(data.getRowLabel(j)).get(mytable.getPrimaryKey().getName(),String.class));
+							else
+								network.getRow(node2).set(CyNetwork.NAME, "Node " + numNodes);
+						}
+						if(network.getRow(node2).get(CyNetwork.SELECTED,Boolean.class ) == true)
+							network.getRow(node2).set(CyNetwork.SELECTED, false);
+						mapRowNodes[j] = node2;
+						numNodes++;
+					}
+									
+					if(!network.containsEdge(mapRowNodes[i], mapRowNodes[j]))
+					{
+						edge = network.addEdge(mapRowNodes[i], mapRowNodes[j], false);
+						//network.getRow(edge).set("Mutual Information",matrix.getScore(i, j));
+						//network.getRow(edge).set(CyEdge.INTERACTION,((Double)matrix.getScore(i, j)).toString());
+						network.getRow(edge).set("name", network.getRow(mapRowNodes[i]).get("name", String.class)
+								+ " (DC_TDC) " + network.getRow( mapRowNodes[j]).get("name", String.class));
+					}
+				}
+			}
+		}
+		
+		if(colsToKeep != null)
+		{
+			ArrayList<String> listCols = new ArrayList<String>();
+			CyTable nodeTable = network.getDefaultNodeTable();
+			
+			listCols.addAll(attributeArray);
+			listCols.removeAll(colsToKeep);
+			
+			for(String colName : listCols)
+				nodeTable.deleteColumn(colName);
+						
+		}
+	}
+	
+	@Override
+	public void cancel() {
+		cancelled = true;
+		if(dreamGranger != null)
+			dreamGranger.setCancel();
+		if(prior != null)
+			prior.setCancel();
+	}
 }
