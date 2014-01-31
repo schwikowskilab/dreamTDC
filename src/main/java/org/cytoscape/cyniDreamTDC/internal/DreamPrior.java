@@ -84,7 +84,10 @@ public class DreamPrior {
 			edges.clear();
 			listIds.clear();
 			degrees.clear();
-			parseNetwork(nodes,edges,degrees, textFile);
+			if(fileName.endsWith(".sif"))
+				parseNetwork(nodes,edges,degrees, textFile,true);
+			else
+				parseNetwork(nodes,edges,degrees, textFile,false);
 			nodesIds =  new String[nodes.size()];
 			nodes.toArray(nodesIds);
 			data = new SparseDoubleMatrix2D(nodes.size(),nodes.size());
@@ -183,10 +186,11 @@ public class DreamPrior {
 		return finalData.toArray();
 	}
 	
-	private void parseNetwork(Set<String> nodes, Map<String,Map<String,Integer>> edges,Map<String,Integer> degree, String network )
+	private void parseNetwork(Set<String> nodes, Map<String,Map<String,Integer>> edges,Map<String,Integer> degree, String network , boolean sifFile)
 	{
 		String networkCols[];
 		String line;
+		String source, target;
 		
 		
 		Scanner scanner = new Scanner(network);
@@ -197,26 +201,37 @@ public class DreamPrior {
 		    if(networkCols.length != 3)
 		    	continue;
 		    
-		    if(edges.get(networkCols[0]) == null)
-		    	edges.put(networkCols[0],new HashMap<String,Integer>());
-		    if(edges.get(networkCols[1]) == null)
-		    	edges.put(networkCols[1],new HashMap<String,Integer>());
-		    if(edges.get(networkCols[0]) != null && edges.get(networkCols[0]).get(networkCols[1]) != null)
+		    if(sifFile)
+		    {
+		    	source = networkCols[0];
+		    	target = networkCols[2];
+		    }
+		    else
+		    {
+		    	source = networkCols[0];
+		    	target = networkCols[1];
+		    }
+		    
+		    if(edges.get(source) == null)
+		    	edges.put(source,new HashMap<String,Integer>());
+		    if(edges.get(target) == null)
+		    	edges.put(target,new HashMap<String,Integer>());
+		    if(edges.get(source) != null && edges.get(source).get(target) != null)
 		    	continue;
 		    
-		    nodes.add(networkCols[0]);
-		    nodes.add(networkCols[1]);
-		    edges.get(networkCols[0]).put( networkCols[1],1);
-		    edges.get(networkCols[1]).put( networkCols[0],1);
+		    nodes.add(source);
+		    nodes.add(target);
+		    edges.get(source).put(target,1);
+		    edges.get(target).put( source,1);
 		    
-		    if(degree.get(networkCols[0]) == null)
-		    	degree.put(networkCols[0], 1);
+		    if(degree.get(source) == null)
+		    	degree.put(source, 1);
 		    else
-		    	degree.put(networkCols[0], degree.get(networkCols[0])+1);
-		    if(degree.get(networkCols[1]) == null)
-		    	degree.put(networkCols[1], 1);
+		    	degree.put(source, degree.get(source)+1);
+		    if(degree.get(target) == null)
+		    	degree.put(target, 1);
 		    else
-		    	degree.put(networkCols[1], degree.get(networkCols[1])+1);
+		    	degree.put(target, degree.get(target)+1);
 		}
 	}
 	

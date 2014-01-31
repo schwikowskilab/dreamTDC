@@ -45,12 +45,14 @@ public class DreamFileUtils {
 	
 	
 	private String pathDirectory;
+	private File chosenFile;
 	/**
 	 * Creates a new EqualDiscretization object.
 	 */
-	public DreamFileUtils(String pathDirectory) {
+	public DreamFileUtils(String pathDirectory, File file) {
 		
 		this.pathDirectory = 	pathDirectory;
+		this.chosenFile = file;
 		File testFile = new File(pathDirectory);
     	if(!testFile.exists())
     		testFile.mkdirs();
@@ -62,15 +64,20 @@ public class DreamFileUtils {
 		ArrayList<String> files = new ArrayList<String>();
 		ArrayList<String> allFiles = new ArrayList<String>();
 		File spfFile;
+		ZipInputStream zis;
 		
 		ZipEntry entry;
 		String textFile = null;
 		boolean patternFound = false;
 		byte[] Unzipbuffer = new byte[(int) Math.pow(2, 16)];
 		
-		ZipInputStream zis = new ZipInputStream(getClass().getResourceAsStream("/splitdir_net.zip"));
+		
 		
 		try{
+			if(chosenFile == null)
+				zis = new ZipInputStream(getClass().getResourceAsStream("/splitdir_net.zip"));
+			else
+				zis = new ZipInputStream(new FileInputStream(chosenFile));
 			while((entry = zis.getNextEntry()) != null)
 			{
 				spfFile = new File(pathDirectory + entry.getName());

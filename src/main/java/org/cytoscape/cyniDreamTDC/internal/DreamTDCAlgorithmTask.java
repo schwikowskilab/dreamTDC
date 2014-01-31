@@ -82,12 +82,8 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	private boolean threeDformat;
 	private DreamPrior prior;
 	private DreamGranger dreamGranger;
+	private String filesPath ;
 	
-	public static final String DEFAULT_CONFIG_DIR = CyProperty.DEFAULT_PROPS_CONFIG_DIR ;
-	
-	private static final String DEF_USER_DIR = System.getProperty("user.home");
-	
-	private String filesPath = join(File.separator, DEF_USER_DIR, DEFAULT_CONFIG_DIR, "3", "dreamTDC/");
 
 	/**
 	 * Creates a new object.
@@ -95,13 +91,17 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	public DreamTDCAlgorithmTask(final String name, final DreamTDCAlgorithmContext context, CyNetworkFactory networkFactory, CyNetworkViewFactory networkViewFactory,
 			CyNetworkManager networkManager,CyNetworkTableManager netTableMgr, CyRootNetworkManager rootNetMgr, VisualMappingManager vmMgr,
 			CyNetworkViewManager networkViewManager,CyLayoutAlgorithmManager layoutManager, 
-			CyCyniMetricsManager metricsManager, CyTable selectedTable)
+			CyCyniMetricsManager metricsManager, CyTable selectedTable, String filesPath)
 	{
 		super(name, context,networkFactory,networkViewFactory,networkManager, networkViewManager,netTableMgr,rootNetMgr, vmMgr);
 		
 		this.mytable = selectedTable;
+		this.filesPath = filesPath;
 		this.mode = context.mode.getSelectedValue();
-		this.hugoColumn = context.hugoColumn.getSelectedValue();
+		if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
+			this.hugoColumn = context.hugoColumn1.getSelectedValue();
+		else
+			this.hugoColumn = context.hugoColumn2.getSelectedValue();
 		this.attributeArray = context.attributeList.getSelectedValues();
 		this.layoutManager = layoutManager;
 		this.netUtils = new CyniNetworkUtils(networkViewFactory,networkManager,networkViewManager,netTableMgr,rootNetMgr,vmMgr);
@@ -220,9 +220,9 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	    CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
 		
 	    if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
-	    		fileUtils = new DreamFileUtils(filesPath);
+	    		fileUtils = new DreamFileUtils(filesPath, null);
 	    if(mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA) && file.exists())
-	    		fileUtils = new DreamFileUtils(file.getPath());
+	    		fileUtils = new DreamFileUtils(filesPath, file);
 		
 	    dreamGranger = new DreamGranger(data, nThreads);
 		
@@ -259,7 +259,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 				
 				System.out.println("number of files found: " + priorFiles.size());
 				
-				taskMonitor.setStatusMessage("Calculating Prior Data ...");
+				taskMonitor.setStatusMessage("Processing Prior Data ...");
 				taskMonitor.setProgress(0.1);
 				prior = new DreamPrior(fileUtils);
 				priorData = prior.getPriorResults(priorFiles,patternList,indexHugoIdsMap, data);
@@ -358,20 +358,6 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		}
 		
 		taskMonitor.setProgress(1.0d);
-	}
-	
-	private static String join(String separator, String... parts) {
-		StringBuilder builder = new StringBuilder();
-		boolean isFirst = true;
-		for (String part : parts) {
-			if (!isFirst) {
-				builder.append(separator);
-			} else {
-				isFirst = false;
-			}
-			builder.append(part);
-		}
-		return builder.toString();
 	}
 	
 	private List<String> getDimension3List(CyniTable table, String dimension1, List<String> dimensions2, List<String> dimensions3)

@@ -58,11 +58,13 @@ public class DreamTDCAlgorithm extends AbstractCyniAlgorithm  {
 	
 	
 	private CyTable selectedTable;
+	private String filePath;
 	/**
 	 * Creates a new EqualDiscretization object.
 	 */
-	public DreamTDCAlgorithm() {
-		super("dreamTDC.cyni","Dream8 TDC Algorithm",true,CyniCategory.INDUCTION);
+	public DreamTDCAlgorithm(String filePath) {
+		super("dreamTDC","Dream8 DC_TDC Algorithm",true,CyniCategory.INDUCTION);
+		this.filePath = filePath;
 				
 		
 	}
@@ -72,7 +74,7 @@ public class DreamTDCAlgorithm extends AbstractCyniAlgorithm  {
 			CyNetworkViewManager networkViewManager, CyLayoutAlgorithmManager layoutManager, CyCyniMetricsManager metricsManager) {
 			selectedTable = table;
 			return new TaskIterator(new DreamTDCAlgorithmTask(getName(),(DreamTDCAlgorithmContext) context,networkFactory,networkViewFactory,
-					networkManager,netTableMgr,rootNetMgr,vmMgr,networkViewManager,layoutManager,metricsManager, selectedTable));
+					networkManager,netTableMgr,rootNetMgr,vmMgr,networkViewManager,layoutManager,metricsManager, selectedTable,filePath));
 	}
 	
 	public DreamTDCAlgorithmContext createCyniContext(CyTable table, CyCyniMetricsManager metricsManager, TunableSetter tunableSetter,Map<String, Object> mparams) {

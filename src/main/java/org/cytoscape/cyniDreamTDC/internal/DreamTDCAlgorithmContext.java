@@ -1,8 +1,10 @@
 package org.cytoscape.cyniDreamTDC.internal;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.zip.ZipInputStream;
 
 import org.cytoscape.cyni.CyniAlgorithmContext;
 import org.cytoscape.model.CyTable;
@@ -18,10 +20,12 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	public ListSingleSelection<String> mode = new ListSingleSelection<String>(MODE_DATABASE,MODE_OWN_DATA,MODE_NO_PRIOR_DATA);
 	
 	@Tunable(description="Select column containing HUGO Ids:",groups={"Algorithm Prior Data Definition","HUGO ID Definition"},gravity=2.0,xorKey="Use Pathway Commons database prior data")
-	public ListSingleSelection<String> hugoColumn ;
+	public ListSingleSelection<String> hugoColumn1 ;
 	
-	@Tunable(description="Zip File containing all networks:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")
+	@Tunable(description="Zip File containing all networks in sif format:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")
 	public File networkZipFile ;
+	@Tunable(description="Select column containing the mapping Ids:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.5,xorKey="Use your own set of prior network data")
+	public ListSingleSelection<String> hugoColumn2 ;
 	
 	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},gravity=4.0,xorKey="Don't use prior data")
 	public boolean noDatabase = true ;
@@ -78,12 +82,14 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 			attributesHugo.addAll(getAllAttributesLists(table));
 		if(attributesHugo.size() > 0)
 		{
-			hugoColumn = new ListSingleSelection<String>(attributesHugo);
+			hugoColumn1 = new ListSingleSelection<String>(attributesHugo);
+			hugoColumn2 = new ListSingleSelection<String>(attributesHugo);
 			
 		}
 		else
 		{
-			hugoColumn = new  ListSingleSelection<String>("No sources available");
+			hugoColumn1 = new  ListSingleSelection<String>("No sources available");
+			hugoColumn2 = new  ListSingleSelection<String>("No sources available");
 		}
 		attributes = getAllAttributesNumbers(table);
 		cols2dFormat =  new ArrayList<String>();
@@ -115,7 +121,18 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	
 	@Override
 	public ValidationState getValidationState(final Appendable errMsg) {
-		if (mode.getSelectedValue().matches(MODE_DATABASE) && hugoColumn.getSelectedValue().matches("No sources available") )
+		if (mode.getSelectedValue().matches(MODE_DATABASE) && hugoColumn1.getSelectedValue().matches("No sources available") )
+		{
+			try {
+				errMsg.append("There is no column with HUGO IDs");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return ValidationState.INVALID;
+			}
+			return ValidationState.INVALID;
+		}
+		
+		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && hugoColumn2.getSelectedValue().matches("No sources available") )
 		{
 			try {
 				errMsg.append("There is no column with HUGO IDs");
@@ -129,12 +146,40 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.exists() )
 		{
 			try {
-				errMsg.append("Zip file with set of networks needs to be specified");
+				errMsg.append("Zip file doesn't seem to exist. Please specify the zip file containing the set of networks");
 			} catch (IOException e) {
 				e.printStackTrace();
 				return ValidationState.INVALID;
 			}
 			return ValidationState.INVALID;
+		}
+		
+		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.getName().endsWith("zip") )
+		{
+			try {
+				errMsg.append("The chosen file doesn't seem to be a zip file. Please select a zip file.");
+			} catch (IOException e) {
+				e.printStackTrace();
+				return ValidationState.INVALID;
+			}
+			return ValidationState.INVALID;
+		}
+		if (mode.getSelectedValue().matches(MODE_OWN_DATA) )
+		{
+			
+			try {
+				ZipInputStream zis = new ZipInputStream(new FileInputStream(networkZipFile));
+				zis.getNextEntry();
+				if(!zis.getNextEntry().getName().endsWith(".sif"))
+				{
+					errMsg.append("The zip file doesn't contain sif files. Please select a zip file that contains networks in sif format and saved in a .sif file");
+					return ValidationState.INVALID;
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				return ValidationState.INVALID;
+			}
+			
 		}
 		
 		if(attributeList.getPossibleValues().get(0).matches("No sources available") || attributeList.getSelectedValues().size() == 0) {
