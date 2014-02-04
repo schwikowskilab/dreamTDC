@@ -40,8 +40,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.HashSet;
 
-import javax.swing.JOptionPane;
-
 import org.cytoscape.model.CyColumn;
 import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
@@ -83,6 +81,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	private DreamPrior prior;
 	private DreamGranger dreamGranger;
 	private String filesPath ;
+	private boolean edgesDirected;
 	
 
 	/**
@@ -115,6 +114,11 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		else
 			threeDformat = false;
 		
+		if(context.edgesOptions.getSelectedValue().matches(DreamTDCAlgorithmContext.DIRECTED))
+			edgesDirected = true;
+		else
+			edgesDirected = false;
+		
 		if(mode == DreamTDCAlgorithmContext.MODE_OWN_DATA)
 			file = context.networkZipFile;
 	}
@@ -129,6 +133,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		CyNetwork networkSelected = null;
 		String networkName;
 		CyRow row;
+		double step;
 		CyLayoutAlgorithm layout;
 		CyNetworkView newNetworkView ;
 		CyTable  edgeTable;
@@ -269,10 +274,13 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		if(threeDformat)
 		{
 			double temp [][];
+			int i =0;
+			step = (0.6-0.1)/mapDim1ToDim2.size();
 			for(String nameDimension : mapDim1ToDim2.keySet())
 			{
 				taskMonitor.setStatusMessage("Calculating Regression for " + nameDimension);
-				taskMonitor.setProgress(0.4);
+				taskMonitor.setProgress(0.1 + step*i);
+				i++;
 				if (cancelled)
 					break;
 				List<String> dim3List = getDimension3List(data,nameDimension, mapDim1ToDim2.get(nameDimension),dimension3List);
@@ -311,14 +319,15 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 					netRow.set(CyNetwork.NAME, networkName);
 				}
 				edgeTable = newNetwork.getDefaultEdgeTable();
+				edgeTable.createColumn("Edge Score", Double.class, false);	
 				netUtils.addColumns(networkSelected,newNetwork,mytable,CyNode.class, CyNetwork.LOCAL_ATTRS);
 				
-				fillNetwork(newNetwork,priorData,mapGrangertables.get(names), data, threeDimensionsMap.get(names));
+				fillNetwork(newNetwork,priorData,mapGrangertables.get(names), data, threeDimensionsMap.get(names),edgesDirected);
 				
 				//Display the new network
 				if (!cancelled)
 				{
-					newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,false);
+					newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,edgesDirected);
 					layout = layoutManager.getDefaultLayout();
 					Object context = layout.getDefaultLayoutContext();
 					insertTasksAfterCurrentTask(layout.createTaskIterator(newNetworkView, context, CyLayoutAlgorithm.ALL_NODE_VIEWS,""));
@@ -341,14 +350,15 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			}
 			
 			edgeTable = newNetwork.getDefaultEdgeTable();
+			edgeTable.createColumn("Edge Score", Double.class, false);	
 			netUtils.addColumns(networkSelected,newNetwork,mytable,CyNode.class, CyNetwork.LOCAL_ATTRS);
 			
-			fillNetwork(newNetwork,priorData,grangerData, data, null);
+			fillNetwork(newNetwork,priorData,grangerData, data, null,edgesDirected);
 			
 			//Display the new network
 			if (!cancelled)
 			{
-				newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,false);
+				newNetworkView = netUtils.displayNewNetwork(newNetwork, networkSelected,edgesDirected);
 				taskMonitor.setProgress(1.0d);
 				layout = layoutManager.getDefaultLayout();
 				Object context = layout.getDefaultLayoutContext();
@@ -390,11 +400,14 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		return finalList;
 	}
 	
-	private void fillNetwork(CyNetwork network, double[][] table1, double[][] table2, CyniTable data, List<String> colsToKeep)
+	private void fillNetwork(CyNetwork network, double[][] table1, double[][] table2, CyniTable data, List<String> colsToKeep, boolean directed)
 	{
 		CyNode mapRowNodes[];
 		CyNode node1, node2;
 		CyEdge edge;
+		double score = 0.0;
+		boolean addEdge = false;
+		int j=0;
 		int numNodes = 0;
 		int nRows = data.nRows();
 		CyNetwork networkSelected = netUtils.getNetworkAssociatedToTable(mytable);
@@ -406,11 +419,24 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			if (cancelled)
 				break;
 
-			for (int j = i+1; j < nRows; j++) 
+			if(directed)
+				j= 0;
+			else
+				j = i+1;
+			for (; j < nRows; j++) 
 			{
 				if (cancelled)
 					break;
-				if(((table1[i][j] + table2[i][j])/2.0) > 0)
+				if(i == j)
+					continue;
+				score = (table1[i][j] + table2[i][j])/2.0;
+				
+				if(!directed && score == 0.0)
+				{
+					score = (table1[j][i] + table2[j][i])/2.0;
+				}
+				
+				if(Math.abs(score) > 0.0)
 				{
 		
 					if(mapRowNodes[i] == null)
@@ -445,15 +471,15 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 						mapRowNodes[j] = node2;
 						numNodes++;
 					}
-									
-					if(!network.containsEdge(mapRowNodes[i], mapRowNodes[j]))
-					{
-						edge = network.addEdge(mapRowNodes[i], mapRowNodes[j], false);
-						//network.getRow(edge).set("Mutual Information",matrix.getScore(i, j));
-						//network.getRow(edge).set(CyEdge.INTERACTION,((Double)matrix.getScore(i, j)).toString());
-						network.getRow(edge).set("name", network.getRow(mapRowNodes[i]).get("name", String.class)
-								+ " (DC_TDC) " + network.getRow( mapRowNodes[j]).get("name", String.class));
-					}
+								
+					
+						
+					edge = network.addEdge(mapRowNodes[i], mapRowNodes[j], directed);
+					network.getRow(edge).set("Edge Score",score);
+					//network.getRow(edge).set(CyEdge.INTERACTION,((Double)matrix.getScore(i, j)).toString());
+					network.getRow(edge).set("name", network.getRow(mapRowNodes[i]).get("name", String.class)
+							+ " (DC_TDC) " + network.getRow( mapRowNodes[j]).get("name", String.class));
+					
 				}
 			}
 		}

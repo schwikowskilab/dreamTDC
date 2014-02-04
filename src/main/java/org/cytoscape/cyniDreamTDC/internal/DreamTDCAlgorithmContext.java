@@ -30,6 +30,9 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},gravity=4.0,xorKey="Don't use prior data")
 	public boolean noDatabase = true ;
 	
+	@Tunable(description="New edges type", groups="Network Output Options",gravity=4.5)
+	public ListSingleSelection<String> edgesOptions = new ListSingleSelection<String>(DIRECTED,UNDIRECTED);
+	
 	@Tunable(description="Data Attributes", groups="Sources for Network Inference",gravity=5.0,listenForChange = "DataFormat")
 	public ListMultipleSelection<String> attributeList;
 	
@@ -58,8 +61,7 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 		}
 	}
 	
-	@Tunable(description="Network generation option", groups="Sources for Network Inference",gravity=7.0, dependsOn="DataFormat=Dimension1/Dimension2/Dimension3")
-	public ListSingleSelection<String> outputOptions = new ListSingleSelection<String>(COMBINE_ALL,ONLY_ONE_NETWORK);
+	
 	
 	
 	
@@ -72,8 +74,8 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	public static String MODE_NO_PRIOR_DATA = "Don't use prior data";
 	public static String TWO_DIMENSIONS_FORMAT = "Dimension1/Dimension2";
 	public static String THREE_DIMENSIONS_FORMAT = "Dimension1/Dimension2/Dimension3";
-	public static String COMBINE_ALL = "Generate network for each Dimension1 found";
-	public static String ONLY_ONE_NETWORK = "Generate just one network";
+	public static String UNDIRECTED = "Undirected Edges";
+	public static String DIRECTED = "Directed Edges";
 
 	public DreamTDCAlgorithmContext(CyTable table ) {
 		super(true);

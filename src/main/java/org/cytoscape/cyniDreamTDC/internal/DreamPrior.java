@@ -75,6 +75,7 @@ public class DreamPrior {
 		prior = new SparseDoubleMatrix2D(listStringIds.size(),listStringIds.size());
 		finalData = new SparseDoubleMatrix2D(indexHugoIds.size(),indexHugoIds.size());
 		
+		Collections.sort(listFiles);
 		for(String fileName : listFiles)
 		{
 			file = new File(fileName);
@@ -146,9 +147,13 @@ public class DreamPrior {
 		
 		if(prior.getMaxLocation()[0] != 0)
 		{
-			tempData = new DoubleMatrix(prior.toArray());
-			tempData.divi(prior.getMaxLocation()[0]);
-			prior.assign(tempData.toArray2());
+			//tempData = new DoubleMatrix(prior.toArray());
+			double max = prior.getMaxLocation()[0];
+			for(int i=0;i<prior.rows();i++)
+				for(int j=0 ;j< prior.columns();j++)
+					prior.setQuick(i, j, prior.getQuick(i, j)/max);
+			//tempData.divi(prior.getMaxLocation()[0]);
+			//prior.assign(tempData.toArray2());
 		}
 		
 		for(int i= 0;i< indexHugoIds.size();i++)
