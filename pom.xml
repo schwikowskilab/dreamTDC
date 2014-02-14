@@ -36,6 +36,7 @@
 						<Embed-Dependency>jblas,commons-lang3;inline=true</Embed-Dependency>
 						<Embed-Transitive>true</Embed-Transitive>
 						<Export-Package>!${bundle.namespace}.*</Export-Package>
+						<Cytoscape-App-Dependencies>Cyni Toolbox;1.0.0.beta6</Cytoscape-App-Dependencies>
 						<Private-Package>${bundle.namespace}.*</Private-Package>
 						<Bundle-Activator>${bundle.namespace}.CyActivator</Bundle-Activator>
 						<Import-Package>*;resolution:=optional</Import-Package>

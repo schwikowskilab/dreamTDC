@@ -70,16 +70,20 @@ public class DreamPrior {
 		ArrayList<Integer> listIds = new ArrayList<Integer>();
 		SparseDoubleMatrix2D data , prior, finalData;
 		DoubleMatrix tempData ;
+		int counts[][];
 		double sum;
 		
 		prior = new SparseDoubleMatrix2D(listStringIds.size(),listStringIds.size());
 		finalData = new SparseDoubleMatrix2D(indexHugoIds.size(),indexHugoIds.size());
+		counts = new int [listStringIds.size()][listStringIds.size()];
 		
 		Collections.sort(listFiles);
 		for(String fileName : listFiles)
 		{
 			file = new File(fileName);
 			
+			if(cancelled)
+				break;
 			textFile = fileUtils.getTextFile(file);
 			nodes.clear();
 			edges.clear();
@@ -118,7 +122,7 @@ public class DreamPrior {
 			tempData = new DoubleMatrix(data.toArray());
 			tempData.muli(-0.1);
 			data.assign(MatrixFunctions.expm(tempData).toArray2());
-			writeData(file,data,nodesIds);
+			//writeData(file,data,nodesIds);
 			if(listIds.size() >0)
 			{
 				sum = 0.0;
@@ -139,11 +143,24 @@ public class DreamPrior {
 						if(id1 == id2)
 							prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), 0);
 						else
-							prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), data.getQuick(id1, id2));
+						{
+							int index1 = listStringIds.indexOf(nodesIds[id1]);
+							int index2 = listStringIds.indexOf(nodesIds[id2]);
+							double temp = prior.getQuick(index1, index2);
+							counts[index1][index2]++;
+							prior.setQuick(index1, index2, temp + data.getQuick(id1, id2));
+							//prior.setQuick(listStringIds.indexOf(nodesIds[id1]), listStringIds.indexOf(nodesIds[id2]), data.getQuick(id1, id2));
+						}
+							
 					}
 				}
 			}
 		}
+		
+		for(int i=0;i< prior.rows();i++)
+			for(int j=0;j<prior.columns();j++)
+				if(counts[i][j] != 0)
+					prior.setQuick(i,j,prior.getQuick(i, j)/counts[i][j]);
 		
 		if(prior.getMaxLocation()[0] != 0)
 		{
@@ -160,6 +177,8 @@ public class DreamPrior {
 		{
 			for(int j= 0;j< indexHugoIds.size();j++)
 			{
+				if(cancelled)
+					break;
 				sum = 0.0;
 				if(indexHugoIds.get(i).size() == 0 || indexHugoIds.get(j).size() ==0)
 					continue;
@@ -183,11 +202,11 @@ public class DreamPrior {
 			finalData.assign(tempData.toArray2());
 		}
 		
-		nodesIds = new String[400];
+		/*nodesIds = new String[400];
 		for(int i =0;i<table.nRows();i++)
 			nodesIds[i] = (String)table.getRowLabel(i);
 		file = new File("/home/oguitart/temp/priorData.txt");
-		writeData(file,finalData,nodesIds);
+		writeData(file,finalData,nodesIds);*/
 		return finalData.toArray();
 	}
 	

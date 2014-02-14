@@ -108,11 +108,11 @@ public class DreamGranger {
 		}
 		//}
 		
-		nodesIds = new String[400];
+		/*nodesIds = new String[400];
 		for(int i =0;i<table.nRows();i++)
 			nodesIds[i] = (String)table.getRowLabel(i);
 		file = new File("/home/oguitart/temp/grangerData." + dimension1);
-		writeData(file,finalData,nodesIds);
+		writeData(file,finalData,nodesIds);*/
 		return finalData;
 	}
 	

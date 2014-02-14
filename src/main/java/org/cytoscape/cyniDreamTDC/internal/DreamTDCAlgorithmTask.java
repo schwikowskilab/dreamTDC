@@ -40,6 +40,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.HashSet;
 
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import org.cytoscape.model.CyColumn;
 import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
@@ -223,6 +226,20 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		
 		// Create the CyniTable
 	    CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
+	    
+	    if(data.hasAnyMissingValue())
+		{
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					JOptionPane.showMessageDialog(null, "The data selected contains missing values.\n " +
+							"Therefore, this algorithm can not proceed with these conditions.\n" +
+							"Please, use one of the imputation data algorithms to estimate the missing values.", "Warning", JOptionPane.WARNING_MESSAGE);
+				}
+			});
+			newNetwork.dispose();
+			return;
+		}
 		
 	    if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
 	    		fileUtils = new DreamFileUtils(filesPath, null);
@@ -257,7 +274,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE) || mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA))
 		{
 			patternList.addAll( hugoIds);
-			if(fileUtils != null)
+			if(fileUtils != null && !cancelled)
 			{
 
 				priorFiles = fileUtils.getFilesWithPatterns(patternList);
@@ -297,6 +314,8 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			grangerData = dreamGranger.getGrangerResults(null, dimension2List, dimension3List);
 		}
 		
+		if(cancelled)
+			return;
 		//Check if a network is associated to the selected table
 		networkSelected = netUtils.getNetworkAssociatedToTable(mytable);
 		
@@ -308,6 +327,8 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			
 			for(String names : mapGrangertables.keySet())
 			{
+				if(mapGrangertables.get(names) == null)
+					break;
 				//Create new network
 				CyNetwork newNetwork = netFactory.createNetwork();
 		
