@@ -197,8 +197,11 @@ public class DreamPrior {
 			
 		if(finalData.getMaxLocation()[0] != 0)
 		{
+			double max ;
 			tempData = new DoubleMatrix(finalData.toArray());
-			tempData.divi(finalData.getMaxLocation()[0]);
+			tempData = MatrixFunctions.abs(tempData);
+			max = tempData.max();
+			tempData.divi(max);
 			finalData.assign(tempData.toArray2());
 		}
 		

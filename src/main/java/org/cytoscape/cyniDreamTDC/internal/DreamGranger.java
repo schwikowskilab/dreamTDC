@@ -37,6 +37,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.cytoscape.cyni.CyniTable;
+import org.jblas.DoubleMatrix;
+import org.jblas.MatrixFunctions;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
@@ -107,7 +109,16 @@ public class DreamGranger {
 				finalData[i][j] = (pastData[i][j] + futureData[i][j])/2;
 		}
 		//}
-		
+		double max ;
+		DoubleMatrix tempData = new DoubleMatrix(finalData);
+		max = tempData.max();
+		if(max != 0)
+		{
+			tempData = MatrixFunctions.abs(tempData);
+			max = tempData.max();
+			tempData.divi(max);
+			return tempData.toArray2();
+		}
 		/*nodesIds = new String[400];
 		for(int i =0;i<table.nRows();i++)
 			nodesIds[i] = (String)table.getRowLabel(i);
