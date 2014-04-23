@@ -77,7 +77,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	private CyLayoutAlgorithmManager layoutManager;
 	private CyniNetworkUtils netUtils;
 	private String hugoColumn;
-	private String mode;
+	private String mode,algoMode;
 	private File file;
 	private boolean nodeWithMultipleIds;
 	private boolean threeDformat;
@@ -85,6 +85,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	private DreamGranger dreamGranger;
 	private String filesPath ;
 	private boolean edgesDirected;
+	private static int iteration = 0;
 	
 
 	/**
@@ -100,6 +101,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		this.mytable = selectedTable;
 		this.filesPath = filesPath;
 		this.mode = context.mode.getSelectedValue();
+		this.algoMode = context.algoMode.getSelectedValue();
 		if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
 			this.hugoColumn = context.hugoColumn1.getSelectedValue();
 		else
@@ -124,6 +126,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		
 		if(mode == DreamTDCAlgorithmContext.MODE_OWN_DATA)
 			file = context.networkZipFile;
+		iteration++;
 	}
 
 	/**
@@ -162,117 +165,128 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		taskMonitor.setTitle("Dream DC_TDC Algorithm");
 		//patternList = Arrays.asList(str);
 		
-		if(threeDformat)
+		if(!algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_DATA_SET) )
 		{
-			threeDimensionsMap = new HashMap<String,List<String>> ();
-			String array[];
-			for(String dimension : attributeArray)
+			if(threeDformat)
 			{
-				
-				array = dimension.split("/");
-				if(array.length != 3)
-					continue;
-				if(mapDim1ToDim2.get(array[0]) == null)
+				threeDimensionsMap = new HashMap<String,List<String>> ();
+				String array[];
+				for(String dimension : attributeArray)
 				{
-					mapDim1ToDim2.put(array[0], new ArrayList<String>());
-					mapDim1ToDim2.get(array[0]).add(array[1]);
-				}
-				else
-				{
-					if(!mapDim1ToDim2.get(array[0]).contains(array[1]))
+					
+					array = dimension.split("/");
+					if(array.length != 3)
+						continue;
+					if(mapDim1ToDim2.get(array[0]) == null)
+					{
+						mapDim1ToDim2.put(array[0], new ArrayList<String>());
 						mapDim1ToDim2.get(array[0]).add(array[1]);
+					}
+					else
+					{
+						if(!mapDim1ToDim2.get(array[0]).contains(array[1]))
+							mapDim1ToDim2.get(array[0]).add(array[1]);
+					}
+					dimensions3.add(array[2]);
+					if(!dimension3List.contains(array[2]))
+						dimension3List.add(array[2]);
+					
+					if(threeDimensionsMap.get(array[0]) == null)
+					{
+						ArrayList<String> listCols = new ArrayList<String>();
+						listCols.add(dimension);
+						threeDimensionsMap.put(array[0], listCols);
+					}
+					else
+						threeDimensionsMap.get(array[0]).add(dimension);
+					
 				}
-				dimensions3.add(array[2]);
-				if(!dimension3List.contains(array[2]))
-					dimension3List.add(array[2]);
-				
-				if(threeDimensionsMap.get(array[0]) == null)
-				{
-					ArrayList<String> listCols = new ArrayList<String>();
-					listCols.add(dimension);
-					threeDimensionsMap.put(array[0], listCols);
-				}
-				else
-					threeDimensionsMap.get(array[0]).add(dimension);
-				
+				System.out.println("times: " + dimension3List);
+				//dimension2List.addAll(dimensions2);
+				//dimension3List.addAll(dimensions3);
 			}
-			System.out.println("times: " + dimension3List);
-			//dimension2List.addAll(dimensions2);
-			//dimension3List.addAll(dimensions3);
-		}
-		else
-		{			
-			twoDimensionsMap = new HashMap<String,List<String>> ();
-			String array[];
-			for(String dimension : attributeArray)
-			{
-				array = dimension.split("/");
-				if(array.length != 2)
-					continue;
-				dimensions2.add(array[0]);
-				dimensions3.add(array[1]);
-				if(twoDimensionsMap.get(array[0]) == null)
+			else
+			{			
+				twoDimensionsMap = new HashMap<String,List<String>> ();
+				String array[];
+				for(String dimension : attributeArray)
 				{
-					ArrayList<String> listCols = new ArrayList<String>();
-					listCols.add(dimension);
-					twoDimensionsMap.put(array[0], listCols);
+					array = dimension.split("/");
+					if(array.length != 2)
+						continue;
+					dimensions2.add(array[0]);
+					dimensions3.add(array[1]);
+					if(twoDimensionsMap.get(array[0]) == null)
+					{
+						ArrayList<String> listCols = new ArrayList<String>();
+						listCols.add(dimension);
+						twoDimensionsMap.put(array[0], listCols);
+					}
+					else
+						twoDimensionsMap.get(array[0]).add(dimension);				
 				}
-				else
-					twoDimensionsMap.get(array[0]).add(dimension);				
+				dimension2List.addAll(dimensions2);
+				dimension3List.addAll(dimensions3);
 			}
-			dimension2List.addAll(dimensions2);
-			dimension3List.addAll(dimensions3);
 		}
-		
 		// Create the CyniTable
-	    CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
-	    
-	    if(data.hasAnyMissingValue())
+		CyniTable data = new CyniTable(mytable,attributeArray.toArray(new String[0]), false, false, selectedOnly);
+		    
+		if(!algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_DATA_SET) )
 		{
-			SwingUtilities.invokeLater(new Runnable() {
-				@Override
-				public void run() {
-					JOptionPane.showMessageDialog(null, "The data selected contains missing values.\n " +
-							"Therefore, this algorithm can not proceed with these conditions.\n" +
-							"Please, use one of the imputation data algorithms to estimate the missing values.", "Warning", JOptionPane.WARNING_MESSAGE);
-				}
-			});
-			newNetwork.dispose();
-			return;
+			if(data.hasAnyMissingValue())
+			{
+				SwingUtilities.invokeLater(new Runnable() {
+					@Override
+					public void run() {
+						JOptionPane.showMessageDialog(null, "The data selected contains missing values.\n " +
+								"Therefore, this algorithm can not proceed with these conditions.\n" +
+								"Please, use one of the imputation data algorithms to estimate the missing values.", "Warning", JOptionPane.WARNING_MESSAGE);
+					}
+				});
+				newNetwork.dispose();
+				return;
+			}
+		
+			dreamGranger = new DreamGranger(data, nThreads);
 		}
-		
-	    if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
-	    		fileUtils = new DreamFileUtils(filesPath, null);
-	    if(mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA) && file.exists())
-	    		fileUtils = new DreamFileUtils(filesPath, file);
-		
-	    dreamGranger = new DreamGranger(data, nThreads);
 		
 		priorData = new double[data.nRows()][data.nRows()];
 		
-		for(int i=0;i < data.nRows();i++)
+		if(algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_DATA_SET) )
 		{
-			if (cancelled)
-				break;
-			row = mytable.getRow(data.getRowLabel(i));
-			if(nodeWithMultipleIds)
-			{
-				List<String> tempList = row.getList(hugoColumn,String.class);
-				indexHugoIdsMap.put(i, tempList);
-				for(String id : tempList)
-					hugoIds.add(id);
-			}
-			else
-			{
-				String hugo = row.get(hugoColumn, String.class);
-				indexHugoIdsMap.put(i, new ArrayList<String>());
-				indexHugoIdsMap.get(i).add(hugo);
-				hugoIds.add(hugo);
-			}
+			threeDformat = false;
+			grangerData = new double[data.nRows()][data.nRows()];
 		}
 			
-		if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE) || mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA))
+		if(!algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_PRIOR_DATA) )
 		{
+			for(int i=0;i < data.nRows();i++)
+			{
+				if (cancelled)
+					break;
+				row = mytable.getRow(data.getRowLabel(i));
+				if(nodeWithMultipleIds)
+				{
+					List<String> tempList = row.getList(hugoColumn,String.class);
+					indexHugoIdsMap.put(i, tempList);
+					for(String id : tempList)
+						hugoIds.add(id);
+				}
+				else
+				{
+					String hugo = row.get(hugoColumn, String.class);
+					indexHugoIdsMap.put(i, new ArrayList<String>());
+					indexHugoIdsMap.get(i).add(hugo);
+					hugoIds.add(hugo);
+				}
+			}
+			
+			if(mode.matches(DreamTDCAlgorithmContext.MODE_DATABASE))
+	    		fileUtils = new DreamFileUtils(filesPath, null);
+			if(mode.matches(DreamTDCAlgorithmContext.MODE_OWN_DATA) && file.exists())
+	    		fileUtils = new DreamFileUtils(filesPath, file);
+			
 			patternList.addAll( hugoIds);
 			if(fileUtils != null && !cancelled)
 			{
@@ -288,30 +302,33 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 			}
 		}
 		
-		if(threeDformat)
+		if(!algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_DATA_SET) )
 		{
-			double temp [][];
-			int i =0;
-			step = (0.6-0.1)/mapDim1ToDim2.size();
-			for(String nameDimension : mapDim1ToDim2.keySet())
+			if(threeDformat)
 			{
-				taskMonitor.setStatusMessage("Calculating Regression for " + nameDimension);
-				taskMonitor.setProgress(0.1 + step*i);
-				i++;
-				if (cancelled)
-					break;
-				List<String> dim3List = getDimension3List(data,nameDimension, mapDim1ToDim2.get(nameDimension),dimension3List);
-				temp = dreamGranger.getGrangerResults(nameDimension, mapDim1ToDim2.get(nameDimension), dim3List);
-				if(temp != null)
-					mapGrangertables.put(nameDimension, temp);
+				double temp [][];
+				int i =0;
+				step = (0.6-0.1)/mapDim1ToDim2.size();
+				for(String nameDimension : mapDim1ToDim2.keySet())
+				{
+					taskMonitor.setStatusMessage("Calculating Regression for " + nameDimension);
+					taskMonitor.setProgress(0.1 + step*i);
+					i++;
+					if (cancelled)
+						break;
+					List<String> dim3List = getDimension3List(data,nameDimension, mapDim1ToDim2.get(nameDimension),dimension3List);
+					temp = dreamGranger.getGrangerResults(nameDimension, mapDim1ToDim2.get(nameDimension), dim3List);
+					if(temp != null)
+						mapGrangertables.put(nameDimension, temp);
+				}
+				
 			}
-			
-		}
-		else
-		{
-			taskMonitor.setStatusMessage("Calculating Regression on provided data ...");
-			taskMonitor.setProgress(0.4);
-			grangerData = dreamGranger.getGrangerResults(null, dimension2List, dimension3List);
+			else
+			{
+				taskMonitor.setStatusMessage("Calculating Regression on provided data ...");
+				taskMonitor.setProgress(0.4);
+				grangerData = dreamGranger.getGrangerResults(null, dimension2List, dimension3List);
+			}
 		}
 		
 		if(cancelled)
@@ -334,7 +351,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		
 				
 				//Set the name of the network, another name could be chosen
-				networkName = "Cyni Dream DC_TDC " + names + " "+ newNetwork.getSUID();
+				networkName = "Cyni Dream DC_TDC " + names + " "+ iteration;
 				if (newNetwork != null && networkName != null) {
 					CyRow netRow = newNetwork.getRow(newNetwork);
 					netRow.set(CyNetwork.NAME, networkName);
@@ -364,7 +381,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	
 			
 			//Set the name of the network, another name could be chosen
-			networkName = "Cyni Dream DC_TDC " + newNetwork.getSUID();
+			networkName = "Cyni Dream DC_TDC " + iteration;
 			if (newNetwork != null && networkName != null) {
 				CyRow netRow = newNetwork.getRow(newNetwork);
 				netRow.set(CyNetwork.NAME, networkName);
@@ -463,7 +480,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 					if(mapRowNodes[i] == null)
 					{
 						node1 = network.addNode();
-						netUtils.cloneRow(network,CyNode.class,mytable.getRow(data.getRowLabel(i)), network.getRow(node1));
+						netUtils.cloneNodeRow(network,mytable.getRow(data.getRowLabel(i)), node1);
 						if(network.getRow(node1).get(CyNetwork.NAME,String.class ) == null || network.getRow(node1).get(CyNetwork.NAME,String.class ).isEmpty() == true)
 						{
 							if(mytable.getPrimaryKey().getType().equals(String.class) && networkSelected == null)
@@ -479,7 +496,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 					if(mapRowNodes[j] == null)
 					{
 						node2 = network.addNode();
-						netUtils.cloneRow(network,CyNode.class,mytable.getRow(data.getRowLabel(j)), network.getRow(node2));
+						netUtils.cloneNodeRow(network,mytable.getRow(data.getRowLabel(j)),node2);
 						if(network.getRow(node2).get(CyNetwork.NAME,String.class ) == null || network.getRow(node2).get(CyNetwork.NAME,String.class ).isEmpty() == true)
 						{
 							if(mytable.getPrimaryKey().getType().equals(String.class) && networkSelected == null)

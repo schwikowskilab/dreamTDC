@@ -66,6 +66,7 @@ public class DreamPrior {
 		Set<String> nodes = new HashSet<String>();
 		Map<String,Map<String,Integer>> edges = new HashMap<String,Map<String,Integer>>();
 		Map<String,Integer> degrees = new HashMap<String,Integer>();
+		Map<String,Set<String>> nodesMap = new HashMap<String,Set<String>>();
 		String nodesIds[] ;
 		ArrayList<Integer> listIds = new ArrayList<Integer>();
 		SparseDoubleMatrix2D data , prior, finalData;
@@ -77,65 +78,64 @@ public class DreamPrior {
 		finalData = new SparseDoubleMatrix2D(indexHugoIds.size(),indexHugoIds.size());
 		counts = new int [listStringIds.size()][listStringIds.size()];
 		
-		Collections.sort(listFiles);
-		for(String fileName : listFiles)
+		
+		nodes.clear();
+		edges.clear();
+		listIds.clear();
+		degrees.clear();
+			
+		createNetworkMap(listFiles,nodesMap);
+		System.out.println("Done with create network map");
+		parseNetwork(nodes,edges,degrees, nodesMap);
+		System.out.println("nodes found: " + nodes.size() + " edges: " + edges.size());
+		if(nodes.size() == 0)
+			return finalData.toArray();
+		nodesIds =  new String[nodes.size()];
+		nodes.toArray(nodesIds);
+		data = new SparseDoubleMatrix2D(nodes.size(),nodes.size());
+			
+		Arrays.sort(nodesIds);
+			
+		for(int i=0;i< nodesIds.length;i++)
 		{
-			file = new File(fileName);
-			
-			if(cancelled)
-				break;
-			textFile = fileUtils.getTextFile(file);
-			nodes.clear();
-			edges.clear();
-			listIds.clear();
-			degrees.clear();
-			if(fileName.endsWith(".sif"))
-				parseNetwork(nodes,edges,degrees, textFile,true);
-			else
-				parseNetwork(nodes,edges,degrees, textFile,false);
-			nodesIds =  new String[nodes.size()];
-			nodes.toArray(nodesIds);
-			data = new SparseDoubleMatrix2D(nodes.size(),nodes.size());
-			
-			Arrays.sort(nodesIds);
-			
-			for(int i=0;i< nodesIds.length;i++)
-			{
-				data.setQuick(i, i,  degrees.get(nodesIds[i]).doubleValue());
-				if(listStringIds.contains(nodesIds[i]))
-					listIds.add(i);
+			data.setQuick(i, i,  degrees.get(nodesIds[i]).doubleValue());
+			if(listStringIds.contains(nodesIds[i]))
+				listIds.add(i);
 					
-			}
-			for(int i=0;i< nodesIds.length;i++)
+		}
+		System.out.println("prior point 1");
+		for(int i=0;i< nodesIds.length;i++)
+		{
+			for(int j=(i+1);j< nodesIds.length;j++)
 			{
-				for(int j=(i+1);j< nodesIds.length;j++)
-				{
-					if(j==i)
-						continue;
-					if(edges.get(nodesIds[i]).get(nodesIds[j]) != null)
-					{
-						data.setQuick(i, j,-1.0);
-						data.setQuick(j, i,-1.0);
-					}
-				}
-			}
-			tempData = new DoubleMatrix(data.toArray());
-			tempData.muli(-0.1);
-			data.assign(MatrixFunctions.expm(tempData).toArray2());
-			//writeData(file,data,nodesIds);
-			if(listIds.size() >0)
-			{
-				sum = 0.0;
-				for(Integer id1 : listIds)
-				{
-					for(Integer id2 : listIds)
-					{
-						if(id1 != id2)
-							sum += data.getQuick(id1, id2);
-					}
-				}
-				if(sum == 0.0)
+				if(j==i)
 					continue;
+				if(edges.get(nodesIds[i]).get(nodesIds[j]) != null)
+				{
+					data.setQuick(i, j,-1.0);
+					data.setQuick(j, i,-1.0);
+				}
+			}
+		}
+		System.out.println("prior point 2");
+		tempData = new DoubleMatrix(data.toArray());
+		tempData.muli(-0.1);
+		data.assign(MatrixFunctions.expm(tempData).toArray2());
+		//writeData(file,data,nodesIds);
+		System.out.println("prior point 3");
+		if(listIds.size() >0)
+		{
+			sum = 0.0;
+			for(Integer id1 : listIds)
+			{
+				for(Integer id2 : listIds)
+				{
+					if(id1 != id2)
+						sum += data.getQuick(id1, id2);
+				}
+			}
+			if(sum != 0.0)
+			{
 				for(Integer id1 : listIds)
 				{
 					for(Integer id2 : listIds)
@@ -156,7 +156,8 @@ public class DreamPrior {
 				}
 			}
 		}
-		
+
+			System.out.println("prior point 4");
 		for(int i=0;i< prior.rows();i++)
 			for(int j=0;j<prior.columns();j++)
 				if(counts[i][j] != 0)
@@ -172,7 +173,7 @@ public class DreamPrior {
 			//tempData.divi(prior.getMaxLocation()[0]);
 			//prior.assign(tempData.toArray2());
 		}
-		
+		System.out.println("prior point 5");
 		for(int i= 0;i< indexHugoIds.size();i++)
 		{
 			for(int j= 0;j< indexHugoIds.size();j++)
@@ -213,52 +214,111 @@ public class DreamPrior {
 		return finalData.toArray();
 	}
 	
-	private void parseNetwork(Set<String> nodes, Map<String,Map<String,Integer>> edges,Map<String,Integer> degree, String network , boolean sifFile)
+	private void createNetworkMap(List<String> listFiles,Map<String,Set<String>> nodesMap)
 	{
+		File file;
+		String textFile;
+		boolean sifFile;
 		String networkCols[];
 		String line;
 		String source, target;
+		Set<String> option1,option2;
 		
+		Collections.sort(listFiles);
+		for(String fileName : listFiles)
+		{
+			file = new File(fileName);
+			
+			if(cancelled)
+				break;
+			
+			textFile = fileUtils.getTextFile(file);
+			
+			if(fileName.endsWith(".sif"))
+				sifFile = true;
+			else
+				sifFile = false;
+			
+			Scanner scanner = new Scanner(textFile);
+			while (scanner.hasNextLine()) {
+			    line = scanner.nextLine();
+			    networkCols = line.split("\t");
+			    
+			    if(networkCols.length != 3)
+			    	continue;
+			    
+			    if(sifFile)
+			    {
+			    	source = networkCols[0];
+			    	target = networkCols[2];
+			    }
+			    else
+			    {
+			    	source = networkCols[0];
+			    	target = networkCols[1];
+			    }
+			    
+			    option1 = nodesMap.get(source);
+			    option2 = nodesMap.get(target);
+			    if(option1 != null)
+			    {
+			    	if(option1.contains(target))
+			    		continue;
+			    }
+			    if(option2 != null)
+			    {
+			    	if(option2.contains(source))
+			    		continue;
+			    }
+			    
+			    if(option1 != null)
+			    	option1.add(target);
+			    else	
+			    {
+			    	option1 = new HashSet<String>();
+			    	option1.add(target);
+			    	nodesMap.put(source, option1);
+			    }
+			}
+			
+		}
+	}
+	
+	private void parseNetwork(Set<String> nodes, Map<String,Map<String,Integer>> edges,Map<String,Integer> degree, Map<String,Set<String>> nodesMap)
+	{
+		String networkCols[];
+		String line;
+		String source;
 		
-		Scanner scanner = new Scanner(network);
-		while (scanner.hasNextLine()) {
-		    line = scanner.nextLine();
-		    networkCols = line.split("\t");
+		for(Map.Entry<String,Set<String>> entry : nodesMap.entrySet())
+		{
+			source = entry.getKey();
+			
+			for(String target : entry.getValue())
+			{
+			//target = entry.getValue();
 		    
-		    if(networkCols.length != 3)
-		    	continue;
-		    
-		    if(sifFile)
-		    {
-		    	source = networkCols[0];
-		    	target = networkCols[2];
-		    }
-		    else
-		    {
-		    	source = networkCols[0];
-		    	target = networkCols[1];
-		    }
-		    
-		    if(edges.get(source) == null)
-		    	edges.put(source,new HashMap<String,Integer>());
-		    if(edges.get(target) == null)
-		    	edges.put(target,new HashMap<String,Integer>());
-		    if(edges.get(source) != null && edges.get(source).get(target) != null)
-		    	continue;
-		    
-		    nodes.add(source);
-		    nodes.add(target);
-		    edges.get(source).put(target,1);
-		    edges.get(target).put( source,1);
-		    
-		    if(degree.get(source) == null)
-		    	degree.put(source, 1);
-		    else
-		    	degree.put(source, degree.get(source)+1);
-		    if(degree.get(target) == null)
-		    	degree.put(target, 1);
-		    else
-		    	degree.put(target, degree.get(target)+1);
+			    if(edges.get(source) == null)
+			    	edges.put(source,new HashMap<String,Integer>());
+			    if(edges.get(target) == null)
+			    	edges.put(target,new HashMap<String,Integer>());
+			    if(edges.get(source) != null && edges.get(source).get(target) != null)
+			    	continue;
+			    
+			    nodes.add(source);
+			    nodes.add(target);
+			    edges.get(source).put(target,1);
+			    edges.get(target).put( source,1);
+			    
+			    if(degree.get(source) == null)
+			    	degree.put(source, 1);
+			    else
+			    	degree.put(source, degree.get(source)+1);
+			    if(degree.get(target) == null)
+			    	degree.put(target, 1);
+			    else
+			    	degree.put(target, degree.get(target)+1);
+				}
 		}
 	}
 	

@@ -16,28 +16,30 @@ import org.cytoscape.work.Tunable;
 import org.cytoscape.work.TunableValidator;
 
 public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements TunableValidator {
-	@Tunable(description="Prior Data Mode:",groups="Algorithm Prior Data Definition", xorChildren=true, gravity=1.0)
-	public ListSingleSelection<String> mode = new ListSingleSelection<String>(MODE_DATABASE,MODE_OWN_DATA,MODE_NO_PRIOR_DATA);
 	
-	@Tunable(description="Select column containing HUGO Ids:",groups={"Algorithm Prior Data Definition","HUGO ID Definition"},gravity=2.0,xorKey="Use Pathway Commons database prior data")
+	@Tunable(description="Algorithm Mode:",groups="Algorithm Definition",  gravity=0.5)
+	public ListSingleSelection<String> algoMode = new ListSingleSelection<String>(MODE_PRIOR_AND_DATA,MODE_NO_DATA_SET,MODE_NO_PRIOR_DATA);
+	
+	@Tunable(description="Prior Data Mode:",groups="Prior Data Definition", xorChildren=true,dependsOn="algoMode!=Do not use prior data", gravity=1.0)
+	public ListSingleSelection<String> mode = new ListSingleSelection<String>(MODE_DATABASE,MODE_OWN_DATA);
+	
+	@Tunable(description="Select column containing HUGO Ids:",groups={"Prior Data Definition","HUGO ID Definition"},dependsOn="algoMode!=Do not use prior data",gravity=2.0,xorKey="Use Pathway Commons database prior data")
 	public ListSingleSelection<String> hugoColumn1 ;
 	
-	@Tunable(description="Zip File containing all networks in sif format:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")
+	@Tunable(description="Zip File containing all networks in sif format:",groups={"Prior Data Definition","Network Data Set Definition"},dependsOn="algoMode!=Do not use prior data",gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")
 	public File networkZipFile ;
-	@Tunable(description="Select column containing the mapping Ids:",groups={"Algorithm Prior Data Definition","Network Data Set Definition"},gravity=3.5,xorKey="Use your own set of prior network data")
+	@Tunable(description="Select column containing the mapping Ids:",groups={"Prior Data Definition","Network Data Set Definition"},dependsOn="algoMode!=Do not use prior data",gravity=3.5,xorKey="Use your own set of prior network data")
 	public ListSingleSelection<String> hugoColumn2 ;
 	
-	@Tunable(description="No network prior data will be used:",groups={"Algorithm Prior Data Definition","No Network Prior Data"},gravity=4.0,xorKey="Don't use prior data")
-	public boolean noDatabase = true ;
 	
 	@Tunable(description="New edges type", groups="Network Output Options",gravity=4.5)
 	public ListSingleSelection<String> edgesOptions = new ListSingleSelection<String>(DIRECTED,UNDIRECTED);
 	
-	@Tunable(description="Data Attributes", groups="Sources for Network Inference",gravity=5.0,listenForChange = "DataFormat")
+	@Tunable(description="Data Attributes", groups="Sources for Network Inference",dependsOn="algoMode!=Only use prior data",gravity=5.0,listenForChange = "DataFormat")
 	public ListMultipleSelection<String> attributeList;
 	
 	public ListSingleSelection<String> dataFormat = new ListSingleSelection<String>(THREE_DIMENSIONS_FORMAT,TWO_DIMENSIONS_FORMAT);
-	@Tunable(description="Data Columns Name Format", groups="Sources for Network Inference",gravity=6.0)
+	@Tunable(description="Data Columns Name Format", groups="Sources for Network Inference",dependsOn="algoMode!=Only use prior data",gravity=6.0)
 	public ListSingleSelection<String> getDataFormat()
 	{
 		return dataFormat;
@@ -69,11 +71,13 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	private List<String> attributes;
 	private List<String> cols2dFormat;
 	private List<String> cols3dFormat;
-	public static String MODE_DATABASE = "Use Pathway Commons database prior data";
+	public static String MODE_DATABASE = "Use Human Pathway Commons database prior data";
 	public static String MODE_OWN_DATA = "Use your own set of prior network data";
-	public static String MODE_NO_PRIOR_DATA = "Don't use prior data";
-	public static String TWO_DIMENSIONS_FORMAT = "Dimension1/Dimension2";
-	public static String THREE_DIMENSIONS_FORMAT = "Dimension1/Dimension2/Dimension3";
+	public static String MODE_NO_PRIOR_DATA = "Do not use prior data";
+	public static String MODE_NO_DATA_SET = "Only use prior data";
+	public static String MODE_PRIOR_AND_DATA = "Use prior data and input table data";
+	public static String TWO_DIMENSIONS_FORMAT = "Stimulus/Time";
+	public static String THREE_DIMENSIONS_FORMAT = "Network/Stimulus/Time";
 	public static String UNDIRECTED = "Undirected Edges";
 	public static String DIRECTED = "Directed Edges";
 
@@ -123,76 +127,82 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	
 	@Override
 	public ValidationState getValidationState(final Appendable errMsg) {
-		if (mode.getSelectedValue().matches(MODE_DATABASE) && hugoColumn1.getSelectedValue().matches("No sources available") )
+		if(!algoMode.getSelectedValue().matches(MODE_NO_PRIOR_DATA))
 		{
-			try {
-				errMsg.append("There is no column with HUGO IDs");
-			} catch (IOException e) {
-				e.printStackTrace();
-				return ValidationState.INVALID;
-			}
-			return ValidationState.INVALID;
-		}
-		
-		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && hugoColumn2.getSelectedValue().matches("No sources available") )
-		{
-			try {
-				errMsg.append("There is no column with HUGO IDs");
-			} catch (IOException e) {
-				e.printStackTrace();
-				return ValidationState.INVALID;
-			}
-			return ValidationState.INVALID;
-		}
-		
-		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.exists() )
-		{
-			try {
-				errMsg.append("Zip file doesn't seem to exist. Please specify the zip file containing the set of networks");
-			} catch (IOException e) {
-				e.printStackTrace();
-				return ValidationState.INVALID;
-			}
-			return ValidationState.INVALID;
-		}
-		
-		if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.getName().endsWith("zip") )
-		{
-			try {
-				errMsg.append("The chosen file doesn't seem to be a zip file. Please select a zip file.");
-			} catch (IOException e) {
-				e.printStackTrace();
-				return ValidationState.INVALID;
-			}
-			return ValidationState.INVALID;
-		}
-		if (mode.getSelectedValue().matches(MODE_OWN_DATA) )
-		{
-			
-			try {
-				ZipInputStream zis = new ZipInputStream(new FileInputStream(networkZipFile));
-				zis.getNextEntry();
-				if(!zis.getNextEntry().getName().endsWith(".sif"))
-				{
-					errMsg.append("The zip file doesn't contain sif files. Please select a zip file that contains networks in sif format and saved in a .sif file");
+			if (mode.getSelectedValue().matches(MODE_DATABASE) && hugoColumn1.getSelectedValue().matches("No sources available") )
+			{
+				try {
+					errMsg.append("There is no column with HUGO IDs");
+				} catch (IOException e) {
+					e.printStackTrace();
 					return ValidationState.INVALID;
 				}
-			} catch (IOException e) {
-				e.printStackTrace();
 				return ValidationState.INVALID;
 			}
 			
+			if (mode.getSelectedValue().matches(MODE_OWN_DATA) && hugoColumn2.getSelectedValue().matches("No sources available") )
+			{
+				try {
+					errMsg.append("There is no column with HUGO IDs");
+				} catch (IOException e) {
+					e.printStackTrace();
+					return ValidationState.INVALID;
+				}
+				return ValidationState.INVALID;
+			}
+			
+			if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.exists() )
+			{
+				try {
+					errMsg.append("Zip file doesn't seem to exist. Please specify the zip file containing the set of networks");
+				} catch (IOException e) {
+					e.printStackTrace();
+					return ValidationState.INVALID;
+				}
+				return ValidationState.INVALID;
+			}
+			
+			if (mode.getSelectedValue().matches(MODE_OWN_DATA) && !networkZipFile.getName().endsWith("zip") )
+			{
+				try {
+					errMsg.append("The chosen file doesn't seem to be a zip file. Please select a zip file.");
+				} catch (IOException e) {
+					e.printStackTrace();
+					return ValidationState.INVALID;
+				}
+				return ValidationState.INVALID;
+			}
+			if (mode.getSelectedValue().matches(MODE_OWN_DATA) )
+			{
+				
+				try {
+					ZipInputStream zis = new ZipInputStream(new FileInputStream(networkZipFile));
+					zis.getNextEntry();
+					if(!zis.getNextEntry().getName().endsWith(".sif"))
+					{
+						errMsg.append("The zip file doesn't contain sif files. Please select a zip file that contains networks in sif format and saved in a .sif file");
+						return ValidationState.INVALID;
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+					return ValidationState.INVALID;
+				}
+				
+			}
 		}
 		
-		if(attributeList.getPossibleValues().get(0).matches("No sources available") || attributeList.getSelectedValues().size() == 0) {
-			try {
-				errMsg.append("No sources selected to apply the algorithm or there are no available. Please, select sources from the list if available.");
-			} catch (IOException e) {
-				e.printStackTrace();
+		if(!algoMode.getSelectedValue().matches(MODE_NO_DATA_SET))
+		{
+			if(attributeList.getPossibleValues().get(0).matches("No sources available") || attributeList.getSelectedValues().size() == 0) {
+				try {
+					errMsg.append("No sources selected to apply the algorithm or there are no available. Please, select sources from the list if available.");
+				} catch (IOException e) {
+					e.printStackTrace();
+					return ValidationState.INVALID;
+				}
 				return ValidationState.INVALID;
+				
 			}
-			return ValidationState.INVALID;
-			
 		}
 		
 		return ValidationState.OK;
