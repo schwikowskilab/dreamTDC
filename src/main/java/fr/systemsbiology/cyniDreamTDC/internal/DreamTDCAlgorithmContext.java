@@ -1,4 +1,4 @@
-package org.cytoscape.cyniDreamTDC.internal;
+package fr.systemsbiology.cyniDreamTDC.internal;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.zip.ZipInputStream;
 
-import org.cytoscape.cyni.CyniAlgorithmContext;
+import fr.systemsbiology.cyni.CyniAlgorithmContext;
 import org.cytoscape.model.CyTable;
 import org.cytoscape.work.TunableValidator.ValidationState;
 import org.cytoscape.work.util.*;
@@ -23,7 +23,7 @@ public class DreamTDCAlgorithmContext extends CyniAlgorithmContext implements Tu
 	@Tunable(description="Prior Data Mode:",groups="Prior Data Definition", xorChildren=true,dependsOn="algoMode!=Do not use prior data", gravity=1.0)
 	public ListSingleSelection<String> mode = new ListSingleSelection<String>(MODE_DATABASE,MODE_OWN_DATA);
 	
-	@Tunable(description="Select column containing HUGO Ids:",groups={"Prior Data Definition","HUGO ID Definition"},dependsOn="algoMode!=Do not use prior data",gravity=2.0,xorKey="Use Pathway Commons database prior data")
+	@Tunable(description="Select column containing HUGO Ids:",groups={"Prior Data Definition","HUGO ID Definition"},dependsOn="algoMode!=Do not use prior data",gravity=2.0,xorKey="Use Human Pathway Commons database prior data")
 	public ListSingleSelection<String> hugoColumn1 ;
 	
 	@Tunable(description="Zip File containing all networks in sif format:",groups={"Prior Data Definition","Network Data Set Definition"},dependsOn="algoMode!=Do not use prior data",gravity=3.0,params="input=true",xorKey="Use your own set of prior network data")

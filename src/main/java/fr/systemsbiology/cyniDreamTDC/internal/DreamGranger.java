@@ -27,7 +27,7 @@
   along with this library; if not, write to the Free Software Foundation,
   Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 */
-package org.cytoscape.cyniDreamTDC.internal;
+package fr.systemsbiology.cyniDreamTDC.internal;
 
 
 import java.util.*;
@@ -36,7 +36,7 @@ import java.io.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.cytoscape.cyni.CyniTable;
+import fr.systemsbiology.cyni.CyniTable;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 

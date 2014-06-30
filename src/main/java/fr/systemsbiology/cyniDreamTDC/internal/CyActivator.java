@@ -1,11 +1,11 @@
-package org.cytoscape.cyniDreamTDC.internal;
+package fr.systemsbiology.cyniDreamTDC.internal;
 
 import org.cytoscape.application.swing.CySwingApplication;
 
 
 
 import org.cytoscape.application.swing.CyAction;
-import org.cytoscape.cyni.*;
+import fr.systemsbiology.cyni.*;
 
 import org.osgi.framework.BundleContext;
 
