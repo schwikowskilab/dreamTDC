@@ -1,7 +1,7 @@
 /*
-  File: CyniSampleAlgorithm.java
+  File: DreamPrior.java
 
-  Copyright (c) 2010, The Cytoscape Consortium (www.cytoscape.org)
+  Copyright (c) 2010-2015, The Cytoscape Consortium (www.cytoscape.org)
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Lesser General Public License as published
@@ -85,9 +85,9 @@ public class DreamPrior {
 		degrees.clear();
 			
 		createNetworkMap(listFiles,nodesMap);
-		System.out.println("Done with create network map");
+		//System.out.println("Done with create network map");
 		parseNetwork(nodes,edges,degrees, nodesMap);
-		System.out.println("nodes found: " + nodes.size() + " edges: " + edges.size());
+		//System.out.println("nodes found: " + nodes.size() + " edges: " + edges.size());
 		if(nodes.size() == 0)
 			return finalData.toArray();
 		nodesIds =  new String[nodes.size()];
@@ -103,7 +103,7 @@ public class DreamPrior {
 				listIds.add(i);
 					
 		}
-		System.out.println("prior point 1");
+		//System.out.println("prior point 1");
 		for(int i=0;i< nodesIds.length;i++)
 		{
 			for(int j=(i+1);j< nodesIds.length;j++)
@@ -117,12 +117,12 @@ public class DreamPrior {
 				}
 			}
 		}
-		System.out.println("prior point 2");
+		//System.out.println("prior point 2");
 		tempData = new DoubleMatrix(data.toArray());
 		tempData.muli(-0.1);
 		data.assign(MatrixFunctions.expm(tempData).toArray2());
 		//writeData(file,data,nodesIds);
-		System.out.println("prior point 3");
+		//System.out.println("prior point 3");
 		if(listIds.size() >0)
 		{
 			sum = 0.0;
@@ -157,7 +157,7 @@ public class DreamPrior {
 			}
 		}
 
-			System.out.println("prior point 4");
+			//System.out.println("prior point 4");
 		for(int i=0;i< prior.rows();i++)
 			for(int j=0;j<prior.columns();j++)
 				if(counts[i][j] != 0)
@@ -173,7 +173,7 @@ public class DreamPrior {
 			//tempData.divi(prior.getMaxLocation()[0]);
 			//prior.assign(tempData.toArray2());
 		}
-		System.out.println("prior point 5");
+		//System.out.println("prior point 5");
 		for(int i= 0;i< indexHugoIds.size();i++)
 		{
 			for(int j= 0;j< indexHugoIds.size();j++)

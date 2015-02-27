@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	
 	<properties>
-		<bundle.symbolicName>cyniDreamTDC</bundle.symbolicName>
+		<bundle.symbolicName>PropheticGranger</bundle.symbolicName>
 		<bundle.namespace>fr.systemsbiology.cyniDreamTDC.internal</bundle.namespace>
 		<cytoscape.api.version>3.1.0</cytoscape.api.version>
 		<cyni.api.version>1.0.0</cyni.api.version>
@@ -11,7 +11,7 @@
 	</properties>
 
 	<groupId>fr.systemsbiology.cyniDreamTDC</groupId>
-	<artifactId>cyniDreamTDC</artifactId>
+	<artifactId>PropheticGranger</artifactId>
 	<packaging>bundle</packaging>
 	<name>${bundle.symbolicName}</name>
 

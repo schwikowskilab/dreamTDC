@@ -1,7 +1,7 @@
 /*
-  File: CyniSampleAlgorithm.java
+  File: DreamGranger.java
 
-  Copyright (c) 2010, The Cytoscape Consortium (www.cytoscape.org)
+  Copyright (c) 2010-2015, The Cytoscape Consortium (www.cytoscape.org)
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Lesser General Public License as published

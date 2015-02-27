@@ -1,7 +1,7 @@
 /*
-  File: CyniSampleAlgorithm.java
+  File: DreamTDCAlgorithm.java
 
-  Copyright (c) 2010, The Cytoscape Consortium (www.cytoscape.org)
+  Copyright (c) 2010-2015, The Cytoscape Consortium (www.cytoscape.org)
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Lesser General Public License as published
@@ -63,7 +63,7 @@ public class DreamTDCAlgorithm extends AbstractCyniAlgorithm  {
 	 * Creates a new EqualDiscretization object.
 	 */
 	public DreamTDCAlgorithm(String filePath) {
-		super("dreamTDC","Dream8 DC_TDC Algorithm",true,CyniCategory.INDUCTION);
+		super("propheticGranger","PropheticGranger Algorithm",true,CyniCategory.INDUCTION);
 		this.filePath = filePath;
 				
 		

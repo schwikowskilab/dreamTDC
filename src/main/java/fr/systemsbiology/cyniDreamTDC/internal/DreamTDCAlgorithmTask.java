@@ -1,7 +1,7 @@
 /*
-  File: EqualDiscretizationTask.java
+  File: DreamTDCAlgorithmTask.java
 
-  Copyright (c) 2006, 2010, The Cytoscape Consortium (www.cytoscape.org)
+  Copyright (c) 2006, 2010-2015, The Cytoscape Consortium (www.cytoscape.org)
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Lesser General Public License as published
@@ -162,7 +162,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		List<String> priorFiles;
 		Set<String> hugoIds = new HashSet<String>();
 		
-		taskMonitor.setTitle("Dream DC_TDC Algorithm");
+		taskMonitor.setTitle("Cyni PropheticGranger Algorithm");
 		//patternList = Arrays.asList(str);
 		
 		if(!algoMode.matches(DreamTDCAlgorithmContext.MODE_NO_DATA_SET) )
@@ -351,7 +351,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 		
 				
 				//Set the name of the network, another name could be chosen
-				networkName = "Cyni Dream DC_TDC " + names + " "+ iteration;
+				networkName = "Cyni PropheticGranger " + names + " "+ iteration;
 				if (newNetwork != null && networkName != null) {
 					CyRow netRow = newNetwork.getRow(newNetwork);
 					netRow.set(CyNetwork.NAME, networkName);
@@ -381,7 +381,7 @@ public class DreamTDCAlgorithmTask extends AbstractCyniTask {
 	
 			
 			//Set the name of the network, another name could be chosen
-			networkName = "Cyni Dream DC_TDC " + iteration;
+			networkName = "Cyni PropheticGranger " + iteration;
 			if (newNetwork != null && networkName != null) {
 				CyRow netRow = newNetwork.getRow(newNetwork);
 				netRow.set(CyNetwork.NAME, networkName);
